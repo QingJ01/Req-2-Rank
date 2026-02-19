@@ -1,0 +1,33 @@
+name: Hub CI
+
+on:
+  push:
+    paths:
+      - "packages/hub/**"
+      - "packages/core/**"
+      - "pnpm-lock.yaml"
+      - "package.json"
+      - ".github/workflows/hub-ci.yml"
+  pull_request:
+    paths:
+      - "packages/hub/**"
+      - "packages/core/**"
+      - "pnpm-lock.yaml"
+      - "package.json"
+      - ".github/workflows/hub-ci.yml"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @req2rank/hub typecheck
+      - run: pnpm --filter @req2rank/hub test

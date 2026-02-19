@@ -1,0 +1,43 @@
+{
+  "target": {
+    "provider": "openai",
+    "model": "gpt-4.1",
+    "apiKey": "$R2R_TARGET_API_KEY",
+    "baseUrl": null
+  },
+  "systemModel": {
+    "provider": "anthropic",
+    "model": "claude-sonnet-4-20250514",
+    "apiKey": "$R2R_SYSTEM_API_KEY"
+  },
+  "judges": [
+    {
+      "provider": "openai",
+      "model": "gpt-4o",
+      "apiKey": "$R2R_JUDGE_OPENAI_API_KEY",
+      "weight": 1
+    },
+    {
+      "provider": "anthropic",
+      "model": "claude-sonnet-4-20250514",
+      "apiKey": "$R2R_JUDGE_ANTHROPIC_API_KEY",
+      "weight": 1.2
+    },
+    {
+      "provider": "google",
+      "model": "gemini-1.5-pro",
+      "apiKey": "$R2R_JUDGE_GOOGLE_API_KEY",
+      "weight": 0.9
+    }
+  ],
+  "test": {
+    "complexity": "C3",
+    "rounds": 5,
+    "concurrency": 1
+  },
+  "hub": {
+    "enabled": true,
+    "serverUrl": "https://api.req2rank.dev",
+    "token": "$R2R_HUB_TOKEN"
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "target": {
+    "provider": "openai",
+    "model": "gpt-4o-mini",
+    "apiKey": "$R2R_TARGET_API_KEY"
+  },
+  "systemModel": {
+    "provider": "anthropic",
+    "model": "claude-sonnet-4-20250514",
+    "apiKey": "$R2R_SYSTEM_API_KEY"
+  },
+  "judges": [
+    {
+      "provider": "openai",
+      "model": "gpt-4o",
+      "apiKey": "$R2R_JUDGE_OPENAI_API_KEY",
+      "weight": 1
+    }
+  ],
+  "test": {
+    "complexity": "mixed",
+    "rounds": 1,
+    "concurrency": 1
+  },
+  "hub": {
+    "enabled": false
+  }
+}

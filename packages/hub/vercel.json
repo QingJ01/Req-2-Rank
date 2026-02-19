@@ -1,0 +1,10 @@
+{
+  "framework": "nextjs",
+  "buildCommand": "pnpm --filter @req2rank/hub next:build",
+  "installCommand": "pnpm install --frozen-lockfile",
+  "outputDirectory": ".next",
+  "regions": ["hkg1"],
+  "env": {
+    "R2R_GITHUB_OAUTH": "true"
+  }
+}

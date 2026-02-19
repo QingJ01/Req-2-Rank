@@ -1,0 +1,26 @@
+{
+  "name": "@req2rank/cli",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "req2rank": "dist/index.js"
+  },
+  "scripts": {
+    "prebuild": "pnpm --filter @req2rank/core build",
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "pretest": "pnpm --filter @req2rank/core build",
+    "test": "vitest run",
+    "smoke": "vitest run src/smoke.test.ts"
+  },
+  "dependencies": {
+    "@req2rank/core": "workspace:*",
+    "commander": "^13.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}

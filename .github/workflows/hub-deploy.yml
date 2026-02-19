@@ -1,0 +1,34 @@
+name: Hub Deploy
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - "packages/hub/**"
+      - "packages/core/**"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/hub-deploy.yml"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @req2rank/hub typecheck
+      - run: pnpm --filter @req2rank/hub test
+      - run: pnpm --filter @req2rank/hub db:migrate
+        env:
+          R2R_DATABASE_URL: ${{ secrets.R2R_DATABASE_URL }}
+      - run: pnpm dlx vercel deploy --prod --yes --cwd packages/hub --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}

@@ -1,0 +1,41 @@
+name: Repo Guards
+
+on:
+  push:
+    paths:
+      - "README.md"
+      - "LICENSE"
+      - "examples/**"
+      - "scripts/check-*.mjs"
+      - "packages/cli/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - ".github/ISSUE_TEMPLATE/**"
+      - ".github/workflows/repo-guards.yml"
+  pull_request:
+    paths:
+      - "README.md"
+      - "LICENSE"
+      - "examples/**"
+      - "scripts/check-*.mjs"
+      - "packages/cli/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - ".github/ISSUE_TEMPLATE/**"
+      - ".github/workflows/repo-guards.yml"
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm check:baseline
+      - run: pnpm check:cli-doc-sync

@@ -1,0 +1,33 @@
+{
+  "name": "@req2rank/hub",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "db:generate": "drizzle-kit generate --config drizzle.config.mjs",
+    "db:migrate": "pnpm build && node dist/lib/db/migrate.js",
+    "db:push": "drizzle-kit push --config drizzle.config.mjs",
+    "next:dev": "next dev",
+    "next:build": "next build",
+    "next:start": "next start",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@req2rank/core": "workspace:*",
+    "drizzle-orm": "^0.45.1",
+    "next": "^16.1.6",
+    "postgres": "^3.4.8",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "drizzle-kit": "^0.31.7",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}
