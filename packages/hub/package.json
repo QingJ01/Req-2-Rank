@@ -4,15 +4,15 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "pnpm --filter @req2rank/core build && tsc -p tsconfig.json",
     "db:generate": "drizzle-kit generate --config drizzle.config.mjs",
     "db:migrate": "pnpm build && node dist/lib/db/migrate.js",
     "db:push": "drizzle-kit push --config drizzle.config.mjs",
     "next:dev": "next dev",
-    "next:build": "next build",
+    "next:build": "pnpm --filter @req2rank/core build && next build",
     "next:start": "next start",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run"
+    "typecheck": "pnpm --filter @req2rank/core build && tsc -p tsconfig.json --noEmit",
+    "test": "pnpm --filter @req2rank/core build && vitest run"
   },
   "dependencies": {
     "@req2rank/core": "workspace:*",
