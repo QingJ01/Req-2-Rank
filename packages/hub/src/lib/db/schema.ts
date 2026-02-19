@@ -10,12 +10,14 @@ export const noncesTable = pgTable("hub_nonces", {
 
 export const submissionsTable = pgTable("hub_submissions", {
   runId: text("run_id").primaryKey(),
+  actorId: text("actor_id").notNull().default(""),
   model: text("model").notNull(),
   score: real("score").notNull(),
   ciLow: real("ci_low").notNull().default(0),
   ciHigh: real("ci_high").notNull().default(0),
   agreementLevel: text("agreement_level").notNull().default("moderate"),
   dimensionScores: jsonb("dimension_scores").notNull().default({}),
+  evidenceChain: jsonb("evidence_chain"),
   submittedAt: timestamp("submitted_at", { withTimezone: true }).notNull(),
   verificationStatus: text("verification_status").notNull(),
   flagged: boolean("flagged").notNull().default(false)

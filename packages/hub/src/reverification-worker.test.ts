@@ -30,7 +30,13 @@ describe("reverification worker", () => {
     });
     await store.queueReverification("run-job-1", "flagged");
 
-    const result = await processQueuedReverificationJobs(store, { maxJobs: 10 });
+    const result = await processQueuedReverificationJobs(store, {
+      maxJobs: 10,
+      replayRunner: async () => ({
+        overallScore: 70,
+        ijaScore: 0.4
+      })
+    });
     expect(result.processed).toBeGreaterThan(0);
 
     const updated = await store.getSubmission("run-job-1");

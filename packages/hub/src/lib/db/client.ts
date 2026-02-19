@@ -13,6 +13,7 @@ function toDetail(row: {
   ciHigh: number;
   agreementLevel: string;
   dimensionScores: unknown;
+  evidenceChain: unknown;
   submittedAt: Date;
   verificationStatus: string;
 }): SubmissionDetail {
@@ -23,6 +24,7 @@ function toDetail(row: {
     ci95: [row.ciLow, row.ciHigh],
     agreementLevel: row.agreementLevel as SubmissionDetail["agreementLevel"],
     dimensionScores: (row.dimensionScores as Record<string, number>) ?? {},
+    evidenceChain: (row.evidenceChain as SubmissionDetail["evidenceChain"]) ?? undefined,
     submittedAt: row.submittedAt.toISOString(),
     verificationStatus: row.verificationStatus as SubmissionDetail["verificationStatus"]
   };
@@ -49,17 +51,21 @@ export function createDrizzleSubmissionStore(databaseUrl: string): SubmissionSto
         await db.execute(sql`
           CREATE TABLE IF NOT EXISTS hub_submissions (
             run_id TEXT PRIMARY KEY,
+            actor_id TEXT NOT NULL DEFAULT '',
             model TEXT NOT NULL,
             score REAL NOT NULL,
             ci_low REAL NOT NULL DEFAULT 0,
             ci_high REAL NOT NULL DEFAULT 0,
             agreement_level TEXT NOT NULL DEFAULT 'moderate',
             dimension_scores JSONB NOT NULL DEFAULT '{}',
+            evidence_chain JSONB,
             submitted_at TIMESTAMPTZ NOT NULL,
             verification_status TEXT NOT NULL,
             flagged BOOLEAN NOT NULL DEFAULT FALSE
           )
         `);
+        await db.execute(sql`ALTER TABLE hub_submissions ADD COLUMN IF NOT EXISTS actor_id TEXT NOT NULL DEFAULT ''`);
+        await db.execute(sql`ALTER TABLE hub_submissions ADD COLUMN IF NOT EXISTS evidence_chain JSONB`);
         await db.execute(sql`
           CREATE TABLE IF NOT EXISTS hub_reverification_jobs (
             id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -113,7 +119,7 @@ export function createDrizzleSubmissionStore(databaseUrl: string): SubmissionSto
       await db.update(noncesTable).set({ usedAt: now }).where(eq(noncesTable.nonce, nonce));
     },
 
-    async saveSubmission(payload: SubmissionRequest): Promise<void> {
+    async saveSubmission(payload: SubmissionRequest, actorId = "system"): Promise<void> {
       await ensureSchema();
       const verificationStatus = payload.overallScore >= 90 ? "pending" : "verified";
 
@@ -121,12 +127,14 @@ export function createDrizzleSubmissionStore(databaseUrl: string): SubmissionSto
         .insert(submissionsTable)
         .values({
           runId: payload.runId,
+          actorId,
           model: `${payload.targetProvider}/${payload.targetModel}`,
           score: payload.overallScore,
           ciLow: payload.ci95?.[0] ?? payload.overallScore,
           ciHigh: payload.ci95?.[1] ?? payload.overallScore,
           agreementLevel: payload.agreementLevel ?? "moderate",
           dimensionScores: payload.dimensionScores ?? {},
+          evidenceChain: payload.evidenceChain,
           submittedAt: new Date(payload.submittedAt),
           verificationStatus,
           flagged: false
@@ -134,12 +142,14 @@ export function createDrizzleSubmissionStore(databaseUrl: string): SubmissionSto
         .onConflictDoUpdate({
           target: submissionsTable.runId,
           set: {
+            actorId,
             model: `${payload.targetProvider}/${payload.targetModel}`,
             score: payload.overallScore,
             ciLow: payload.ci95?.[0] ?? payload.overallScore,
             ciHigh: payload.ci95?.[1] ?? payload.overallScore,
             agreementLevel: payload.agreementLevel ?? "moderate",
             dimensionScores: payload.dimensionScores ?? {},
+            evidenceChain: payload.evidenceChain,
             submittedAt: new Date(payload.submittedAt),
             verificationStatus,
             flagged: false
@@ -179,6 +189,23 @@ export function createDrizzleSubmissionStore(databaseUrl: string): SubmissionSto
         ci95: [Number(item.ci_low), Number(item.ci_high)],
         verificationStatus: item.verification_status
       }));
+    },
+
+    async countSubmissionsForActorDay(actorId: string, dayIsoDate: string): Promise<number> {
+      await ensureSchema();
+      const dayStart = new Date(`${dayIsoDate}T00:00:00.000Z`);
+      const dayEnd = new Date(`${dayIsoDate}T23:59:59.999Z`);
+      const rows = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(submissionsTable)
+        .where(
+          and(
+            eq(submissionsTable.actorId, actorId),
+            sql`${submissionsTable.submittedAt} >= ${dayStart}`,
+            sql`${submissionsTable.submittedAt} <= ${dayEnd}`
+          )
+        );
+      return Number(rows[0]?.count ?? 0);
     },
 
     async queueReverification(runId: string, reason: "top-score" | "flagged") {

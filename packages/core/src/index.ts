@@ -14,3 +14,4 @@ export * from "./submit-payload-builder.js";
 export * from "./leaderboard-query.js";
 export * from "./adaptive-calibration.js";
 export * from "./sandbox.js";
+export * from "./checkpoint-key.js";

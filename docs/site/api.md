@@ -1,15 +1,15 @@
 # API
 
-This page is kept for backward compatibility.
+此页面为兼容旧链接而保留。
 
-For the current route list and local flow, see [Hub APIs and Pages](/hub).
+当前接口清单与本地联调流程请查看 [Hub API 与页面](/hub)。
 
-Public endpoints:
+公共接口：
 
 - `GET /api/public/leaderboard`
 - `GET /api/public/model/:id`
 
-Hub endpoints:
+Hub 接口：
 
 - `POST /api/nonce`
 - `POST /api/submit`

@@ -1,29 +1,29 @@
-# Scoring Methodology
+# 评分方法
 
-Req2Rank aggregates multiple judge model outputs into a final score with reliability signals.
+Req2Rank 会聚合多个评审模型输出，并给出包含可靠性信号的最终得分。
 
-## Dimensions and Weights
+## 评分维度与权重
 
-- Functional completeness: 30%
-- Code quality: 25%
-- Logic accuracy: 25%
-- Security: 10%
-- Engineering practice: 10%
+- 功能完整性：30%
+- 代码质量：25%
+- 逻辑正确性：25%
+- 安全性：10%
+- 工程实践：10%
 
-## Reliability Signals
+## 可靠性信号
 
-- Inter-judge agreement (IJA): consistency level derived from score spread.
-- Confidence interval (CI95): uncertainty range around the aggregated score.
+- 评审一致性（IJA）：由评审分数离散程度推导的一致性等级。
+- 置信区间（CI95）：聚合得分的不确定性范围。
 
-## Aggregation Flow
+## 聚合流程
 
-1. Collect all judge dimension scores.
-2. Compute agreement metrics.
-3. Aggregate weighted dimension scores.
-4. Attach CI95 and warning flags.
+1. 收集所有评审模型的维度分数。
+2. 计算一致性指标。
+3. 按权重聚合维度分数。
+4. 附加 CI95 与告警标记。
 
-## Report Surfaces
+## 结果展示位置
 
-- Local CLI report (`req2rank report <run-id>`)
-- Export file (`req2rank export ...`)
-- Hub leaderboard entries (score + CI + verification status)
+- 本地 CLI 报告（`req2rank report <run-id>`）
+- 导出文件（`req2rank export ...`）
+- Hub 排行榜条目（得分 + CI + 验证状态）

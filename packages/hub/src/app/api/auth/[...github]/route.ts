@@ -1,4 +1,11 @@
 import { RouteEnvelope } from "../../../../routes.js";
+import {
+  consumeGithubOAuthState,
+  gcGithubOAuthSessionStore,
+  issueGithubOAuthSession,
+  issueGithubOAuthState,
+  resolveGithubOAuthSession
+} from "../../../../lib/github-oauth-session.js";
 
 export interface GithubAuthCallbackInput {
   code: string;
@@ -19,42 +26,6 @@ export interface GithubLoginState {
   authUrl: string;
 }
 
-interface PendingState {
-  actorIdHint?: string;
-  expiresAt: number;
-}
-
-const pendingStates = new Map<string, PendingState>();
-const activeSessions = new Map<string, { actorId: string; accessToken: string; expiresAt: number }>();
-
-function randomToken(prefix: string): string {
-  return `${prefix}_${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`;
-}
-
-function gcAuthStores(): void {
-  const now = Date.now();
-  for (const [state, entry] of pendingStates.entries()) {
-    if (entry.expiresAt <= now) {
-      pendingStates.delete(state);
-    }
-  }
-  for (const [session, entry] of activeSessions.entries()) {
-    if (entry.expiresAt <= now) {
-      activeSessions.delete(session);
-    }
-  }
-}
-
-function consumeState(state: string): PendingState {
-  gcAuthStores();
-  const pending = pendingStates.get(state);
-  if (!pending) {
-    throw new Error("OAuth state is invalid or expired");
-  }
-  pendingStates.delete(state);
-  return pending;
-}
-
 export async function startGithubAuthLogin(input: {
   actorIdHint?: string;
   redirectUri?: string;
@@ -64,11 +35,7 @@ export async function startGithubAuthLogin(input: {
     requireNonEmpty(clientId ?? "", "R2R_GITHUB_CLIENT_ID");
 
     const redirectUri = input.redirectUri ?? process.env.R2R_GITHUB_REDIRECT_URI ?? "http://localhost:3000/api/auth/github";
-    const state = randomToken("state");
-    pendingStates.set(state, {
-      actorIdHint: input.actorIdHint,
-      expiresAt: Date.now() + 10 * 60 * 1000
-    });
+    const state = issueGithubOAuthState({ actorIdHint: input.actorIdHint });
 
     const params = new URLSearchParams({
       client_id: clientId as string,
@@ -137,7 +104,7 @@ export async function handleGithubAuthCallback(
       params.set("state", input.state);
     }
 
-    const pending = input.state ? consumeState(input.state) : undefined;
+    const pending = input.state ? consumeGithubOAuthState(input.state) : undefined;
 
     const tokenResponse = await fetch("https://github.com/login/oauth/access_token", {
       method: "POST",
@@ -170,11 +137,9 @@ export async function handleGithubAuthCallback(
 
     const userPayload = (await userResponse.json()) as GithubUserResponse;
     const actorId = input.actorIdHint?.trim() || pending?.actorIdHint || userPayload.login || String(userPayload.id);
-    const sessionToken = randomToken("r2r_session");
-    activeSessions.set(sessionToken, {
+    const sessionToken = issueGithubOAuthSession({
       actorId,
-      accessToken: oauthAccessToken,
-      expiresAt: Date.now() + 24 * 60 * 60 * 1000
+      accessToken: oauthAccessToken
     });
 
     return {
@@ -213,9 +178,9 @@ export async function GET(request: Request): Promise<Response> {
   }
 
   if (action === "session") {
-    gcAuthStores();
+    gcGithubOAuthSessionStore();
     const sessionToken = request.headers.get("x-session-token") ?? url.searchParams.get("session") ?? "";
-    const session = activeSessions.get(sessionToken);
+    const session = resolveGithubOAuthSession(sessionToken);
     if (!session) {
       return Response.json(
         {

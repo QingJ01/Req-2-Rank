@@ -1,8 +1,8 @@
-# Configuration
+# 配置说明
 
-Use `req2rank.config.json` in your working directory.
+在工作目录使用 `req2rank.config.json` 作为配置文件。
 
-## Minimal Example
+## 最小示例
 
 ```json
 {
@@ -14,16 +14,16 @@ Use `req2rank.config.json` in your working directory.
 }
 ```
 
-## Precedence
+## 配置优先级
 
-Runtime config precedence is:
+运行时配置优先级如下：
 
-1. CLI flags
-2. Environment variables
+1. CLI 参数
+2. 环境变量
 3. `req2rank.config.json`
-4. Built-in defaults
+4. 内置默认值
 
-## Common CLI Overrides
+## 常见 CLI 覆盖项
 
 ```bash
 req2rank run --target openai/gpt-4o-mini
@@ -31,7 +31,7 @@ req2rank run --complexity C3 --rounds 3
 req2rank leaderboard --limit 20 --sort desc
 ```
 
-## Sample Config Files
+## 示例配置文件
 
 - `examples/basic.config.json`
 - `examples/advanced.config.json`

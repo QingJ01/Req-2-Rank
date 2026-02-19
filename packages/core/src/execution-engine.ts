@@ -1,4 +1,5 @@
 import { ProjectRequirement } from "./types.js";
+import { LLMProvider } from "./providers/base.js";
 
 export interface ExecutionResult {
   code: string;
@@ -19,6 +20,7 @@ export interface ExecutionBudget {
 
 export interface ExecuteOptions {
   rawResponse?: string;
+  provider?: LLMProvider;
 }
 
 const EXECUTION_BUDGETS: Record<ProjectRequirement["metadata"]["complexity"], ExecutionBudget> = {
@@ -84,16 +86,49 @@ export class ExecutionEngine {
   async execute(requirement: ProjectRequirement, target: ExecutionTarget, options: ExecuteOptions = {}): Promise<ExecutionResult> {
     const budget = resolveExecutionBudget(requirement.metadata.complexity);
 
-    const fallbackCode = [
-      `// provider: ${target.provider}`,
-      `// model: ${target.model}`,
-      `// requirement: ${requirement.title}`,
-      "export function main() {",
-      "  return 'ok';",
-      "}"
-    ].join("\n");
+    let rawResponse = options.rawResponse;
+    if (!rawResponse) {
+      if (!options.provider) {
+        throw new Error("Execution provider is required when rawResponse is not provided.");
+      }
 
-    const rawResponse = options.rawResponse ?? JSON.stringify({ language: "typescript", code: fallbackCode });
+      const executionPrompt = [
+        "You are implementing code for a software requirement.",
+        "Return code as JSON `{\"language\":\"...\",\"code\":\"...\"}`.",
+        "If JSON is not possible, return a single fenced code block.",
+        "",
+        `Target provider: ${target.provider}`,
+        `Target model: ${target.model}`,
+        `Requirement title: ${requirement.title}`,
+        `Requirement description: ${requirement.description}`,
+        "Functional requirements:",
+        ...requirement.functionalRequirements.map(
+          (item) => `- ${item.id}: ${item.description} | acceptance: ${item.acceptanceCriteria}`
+        ),
+        "Constraints:",
+        ...requirement.constraints.map((item) => `- ${item}`),
+        "Expected deliverables:",
+        ...requirement.expectedDeliverables.map((item) => `- ${item}`)
+      ].join("\n");
+
+      const response = await options.provider.chat({
+        model: target.model,
+        temperature: 0.2,
+        maxTokens: budget.maxTokens,
+        messages: [
+          {
+            role: "system",
+            content: "You generate production-ready code that strictly follows requirements."
+          },
+          {
+            role: "user",
+            content: executionPrompt
+          }
+        ]
+      });
+      rawResponse = response.content;
+    }
+
     const parsed = parseExecutionResponse(rawResponse);
 
     return {

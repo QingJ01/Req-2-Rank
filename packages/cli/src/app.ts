@@ -22,6 +22,11 @@ import {
   buildSubmissionPayload,
   calibrateComplexity,
   createHubClient,
+  createProvider,
+  LLMProvider,
+  PipelineCheckpoint,
+  PipelineCheckpointStore,
+  createPipelineCheckpointKey,
   parseLeaderboardQuery,
   Req2RankConfig,
   runSandboxedCommand,
@@ -31,6 +36,7 @@ import {
 
 const CONFIG_FILENAME = "req2rank.config.json";
 const STORE_FILENAME = ".req2rank/runs.db";
+const CHECKPOINT_FILENAME = ".req2rank/checkpoints.json";
 
 export interface CliAppOptions {
   cwd?: string;
@@ -82,6 +88,139 @@ type SandboxOptions = {
   image?: string;
   command?: string;
 };
+
+class FileCheckpointStore implements PipelineCheckpointStore {
+  constructor(private readonly filePath: string) {}
+
+  private async readAll(): Promise<Record<string, PipelineCheckpoint>> {
+    try {
+      const raw = await readFile(this.filePath, "utf-8");
+      const parsed = JSON.parse(raw) as unknown;
+      if (!parsed || typeof parsed !== "object") {
+        return {};
+      }
+      return parsed as Record<string, PipelineCheckpoint>;
+    } catch {
+      return {};
+    }
+  }
+
+  private async writeAll(entries: Record<string, PipelineCheckpoint>): Promise<void> {
+    await mkdir(dirname(this.filePath), { recursive: true });
+    await writeFile(this.filePath, JSON.stringify(entries, null, 2), "utf-8");
+  }
+
+  async load(key: string): Promise<PipelineCheckpoint | undefined> {
+    const entries = await this.readAll();
+    return entries[key];
+  }
+
+  async save(key: string, checkpoint: PipelineCheckpoint): Promise<void> {
+    const entries = await this.readAll();
+    entries[key] = checkpoint;
+    await this.writeAll(entries);
+  }
+
+  async clear(key: string): Promise<void> {
+    const entries = await this.readAll();
+    delete entries[key];
+    await this.writeAll(entries);
+  }
+}
+
+class StubLlmProvider implements LLMProvider {
+  id = "stub";
+  name = "Stub LLM";
+
+  async chat(params: { messages: Array<{ role: string; content: string }> }): Promise<{
+    content: string;
+    usage: { promptTokens: number; completionTokens: number };
+    latencyMs: number;
+  }> {
+    const lastMessage = params.messages.at(-1)?.content ?? "";
+
+    if (lastMessage.includes("Convert the reviewed requirement into strict JSON")) {
+      return {
+        content: JSON.stringify({
+          title: "Generated requirement",
+          description: "Build a deterministic evaluation fixture.",
+          functionalRequirements: [
+            {
+              id: "FR-1",
+              description: "Implement the main feature flow",
+              acceptanceCriteria: "Main flow returns expected output",
+              priority: "must"
+            },
+            {
+              id: "FR-2",
+              description: "Handle invalid input safely",
+              acceptanceCriteria: "Invalid input returns structured error",
+              priority: "must"
+            }
+          ],
+          constraints: ["Use TypeScript"],
+          expectedDeliverables: ["source code", "tests"],
+          evaluationGuidance: {
+            keyDifferentiators: ["deterministic behavior"],
+            commonPitfalls: ["missing validation"],
+            edgeCases: ["empty input"]
+          },
+          selfReviewPassed: true
+        }),
+        usage: { promptTokens: 10, completionTokens: 20 },
+        latencyMs: 5
+      };
+    }
+
+    if (lastMessage.includes("Audit and improve this requirement draft")) {
+      return {
+        content: "Reviewed requirement: clear scope, explicit acceptance criteria, and one edge case.",
+        usage: { promptTokens: 9, completionTokens: 18 },
+        latencyMs: 5
+      };
+    }
+
+    if (lastMessage.includes("Draft a project requirement document")) {
+      return {
+        content: "Draft requirement text with concrete and testable requirements.",
+        usage: { promptTokens: 8, completionTokens: 16 },
+        latencyMs: 5
+      };
+    }
+
+    if (lastMessage.includes("You are implementing code for a software requirement")) {
+      return {
+        content: JSON.stringify({ language: "typescript", code: "export function main() { return 'ok'; }" }),
+        usage: { promptTokens: 8, completionTokens: 16 },
+        latencyMs: 5
+      };
+    }
+
+    if (lastMessage.includes("Score this code against the requirement")) {
+      return {
+        content: JSON.stringify({
+          functionalCompleteness: 85,
+          codeQuality: 82,
+          logicAccuracy: 84,
+          security: 80,
+          engineeringPractice: 83
+        }),
+        usage: { promptTokens: 7, completionTokens: 14 },
+        latencyMs: 5
+      };
+    }
+
+    return {
+      content: "{}",
+      usage: { promptTokens: 1, completionTokens: 1 },
+      latencyMs: 1
+    };
+  }
+}
+
+function createStubProviderFactory(): typeof createProvider {
+  return () => new StubLlmProvider();
+}
 
 function applyRunOverrides(config: Req2RankConfig, overrides: RunOverrides): Req2RankConfig {
   const nextConfig: Req2RankConfig = JSON.parse(JSON.stringify(config));
@@ -151,10 +290,30 @@ async function ensureConfig(cwd: string): Promise<string> {
 
 export function createCliApp(options: CliAppOptions = {}) {
   const cwd = options.cwd ?? process.cwd();
-  const env = options.env ?? process.env;
+  const env = { ...process.env, ...(options.env ?? {}) };
   const injectedHubClient = options.hubClient;
   const store = new LocalStore(join(cwd, STORE_FILENAME));
-  const pipeline = new PipelineOrchestrator();
+  const checkpointStore = new FileCheckpointStore(join(cwd, CHECKPOINT_FILENAME));
+
+  function shouldUseStubProviders(config: Req2RankConfig): boolean {
+    if (!config.target.apiKey || !config.systemModel.apiKey) {
+      return true;
+    }
+
+    return config.judges.some((judge) => !judge.apiKey);
+  }
+
+  function createRuntimePipeline(config: Req2RankConfig): PipelineOrchestrator {
+    if (env.R2R_FORCE_REAL_LLM === "true") {
+      return new PipelineOrchestrator();
+    }
+
+    if (shouldUseStubProviders(config)) {
+      return new PipelineOrchestrator(undefined, undefined, undefined, undefined, createStubProviderFactory());
+    }
+
+    return new PipelineOrchestrator();
+  }
 
   async function resolveHubClient(): Promise<HubClient> {
     if (injectedHubClient) {
@@ -211,7 +370,14 @@ export function createCliApp(options: CliAppOptions = {}) {
         .action(async (options: RunOverrides) => {
           const envConfig = applyEnvOverrides(await readConfig(cwd), env);
           const config = applyRunOverrides(envConfig, options);
-          const runRecord = await pipeline.run({ config });
+          const pipeline = createRuntimePipeline(config);
+          const runRecord = await pipeline.run({
+            config,
+            checkpoint: {
+              key: createPipelineCheckpointKey("run", config),
+              store: checkpointStore
+            }
+          });
           await store.appendRun(runRecord);
           output = `Run completed: ${runRecord.id}`;
         });
@@ -236,7 +402,14 @@ export function createCliApp(options: CliAppOptions = {}) {
               complexity: options.complexity,
               rounds: options.rounds
             });
-            const runRecord = await pipeline.run({ config });
+            const pipeline = createRuntimePipeline(config);
+            const runRecord = await pipeline.run({
+              config,
+              checkpoint: {
+                key: createPipelineCheckpointKey("compare", config),
+                store: checkpointStore
+              }
+            });
             await store.appendRun(runRecord);
             rows.push(`${target} => ${runRecord.overallScore} (${runRecord.id})`);
           }

@@ -877,7 +877,7 @@ Round 3: 生成需求C → 写代码 → 评审 → 得分
 - [x] 模型详情页（雷达图 + 带 CI 的历史趋势）
 - [x] CLI `submit` 和 `leaderboard` 命令
 - [x] 异步抽样复验流程
-- [ ] 部署到 Vercel + 数据库托管
+- [x] 部署到 Vercel + 数据库托管
 
 ### Phase 3 — 生态完善
 

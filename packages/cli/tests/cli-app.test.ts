@@ -1,8 +1,9 @@
-import { mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createCliApp } from "../src/app.js";
+import { Req2RankConfig, createPipelineCheckpointKey } from "@req2rank/core";
 
 const createdDirs: string[] = [];
 
@@ -578,5 +579,58 @@ describe("CLI app", () => {
       test: { complexity: string };
     };
     expect(config.test.complexity).toMatch(/^C[1-4]$/);
+  });
+
+  it("resumes run from checkpoint snapshot when available", async () => {
+    const cwd = await mkdtemp(join(tmpdir(), "req2rank-checkpoint-resume-"));
+    createdDirs.push(cwd);
+
+    const app = createCliApp({ cwd });
+    await app.run(["init"]);
+
+    const checkpointPath = join(cwd, ".req2rank", "checkpoints.json");
+    const config = JSON.parse(await readFile(join(cwd, "req2rank.config.json"), "utf-8")) as Req2RankConfig;
+    const checkpointKey = createPipelineCheckpointKey("run", config);
+    await mkdir(join(cwd, ".req2rank"), { recursive: true });
+    await writeFile(
+      checkpointPath,
+      JSON.stringify(
+        {
+          [checkpointKey]: {
+            version: 1,
+            createdAt: "2026-01-01T00:00:00.000Z",
+            totalRounds: 1,
+            completedRounds: [
+              {
+                index: 0,
+                overallScore: 99,
+                dimensionScores: {
+                  functionalCompleteness: 99,
+                  codeQuality: 99,
+                  logicAccuracy: 99,
+                  security: 99,
+                  engineeringPractice: 99
+                },
+                ija: 1,
+                requirementTitle: "Checkpointed Requirement"
+              }
+            ]
+          }
+        },
+        null,
+        2
+      ),
+      "utf-8"
+    );
+
+    const runResult = await app.run(["run"]);
+    const runId = runResult.split(":").at(1)?.trim();
+    expect(runId).toBeTruthy();
+
+    const report = await app.run(["report", runId ?? ""]);
+    expect(report).toContain("Overall score: 99");
+
+    const checkpoints = JSON.parse(await readFile(checkpointPath, "utf-8")) as Record<string, unknown>;
+    expect(checkpoints[checkpointKey]).toBeUndefined();
   });
 });

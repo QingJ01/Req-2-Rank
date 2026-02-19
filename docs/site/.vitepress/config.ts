@@ -2,22 +2,22 @@ import { defineConfig } from "vitepress";
 
 export default defineConfig({
   title: "Req2Rank",
-  description: "Open benchmarking framework for coding models",
+  description: "面向代码模型的开源评测框架",
   themeConfig: {
     nav: [
-      { text: "Getting Started", link: "/getting-started" },
-      { text: "Configuration", link: "/configuration" },
+      { text: "快速开始", link: "/getting-started" },
+      { text: "配置说明", link: "/configuration" },
       { text: "Hub", link: "/hub" }
     ],
     sidebar: [
       {
-        text: "Guide",
+        text: "文档",
         items: [
-          { text: "Getting Started", link: "/getting-started" },
-          { text: "Configuration", link: "/configuration" },
-          { text: "Scoring Methodology", link: "/scoring-methodology" },
-          { text: "Hub APIs and Pages", link: "/hub" },
-          { text: "Contributing", link: "/contributing" }
+          { text: "快速开始", link: "/getting-started" },
+          { text: "配置说明", link: "/configuration" },
+          { text: "评分方法", link: "/scoring-methodology" },
+          { text: "Hub API 与页面", link: "/hub" },
+          { text: "贡献指南", link: "/contributing" }
         ]
       }
     ]

@@ -1,13 +1,18 @@
-# Hub APIs and Pages
+# Hub API 与页面
 
-This page documents currently available Hub endpoints and web entry pages.
+本页用于说明当前可用的 Hub 接口与页面入口。
 
-## Public API Endpoints
+## 生产环境地址
+
+- 基础地址：`https://r2r.byebug.cn`
+- 部署平台：Vercel
+
+## 公共 API 接口
 
 - `GET /api/public/leaderboard`
 - `GET /api/public/model/:id`
 
-## Authenticated Hub Endpoints
+## 需要鉴权的 Hub 接口
 
 - `POST /api/nonce`
 - `POST /api/submit`
@@ -18,25 +23,39 @@ This page documents currently available Hub endpoints and web entry pages.
 - `GET /api/reports`
 - `POST /api/reverification/process`
 
-## Hub Web Pages
+## Hub 页面入口
 
-- `/` leaderboard page
-- `/model/:id` model detail page
-- `/submission/:id` submission detail page
-- `/admin` admin page
+- `/` 排行榜首页
+- `/model/:id` 模型详情页
+- `/submission/:id` 提交详情页
+- `/admin` 管理后台
 
-## Minimal End-to-End Local Flow
+## 本地最小闭环流程
 
-1. Set `R2R_HUB_TOKEN` and `R2R_DATABASE_URL` for Hub.
-2. Run migration: `pnpm --filter @req2rank/hub db:migrate`.
-3. Start hub page/API server: `pnpm --filter @req2rank/hub next:dev`.
-4. In CLI config, set:
+1. 为 Hub 设置 `R2R_HUB_TOKEN` 与 `R2R_DATABASE_URL`。
+2. 执行迁移：`pnpm --filter @req2rank/hub db:migrate`。
+3. 启动 Hub 页面与 API 服务：`pnpm --filter @req2rank/hub next:dev`。
+4. 在 CLI 配置中设置：
    - `hub.enabled = true`
    - `hub.serverUrl = http://localhost:3000`
-   - `hub.token = <same R2R_HUB_TOKEN>`
-5. Execute:
+   - `hub.token = <与 R2R_HUB_TOKEN 相同>`
+5. 执行命令：
    - `req2rank run --complexity C2 --rounds 1`
    - `req2rank submit --latest`
    - `req2rank leaderboard`
 
-If reverification is enabled, trigger processor using `/api/reverification/process` and the configured secret header.
+如果启用了复验流程，请使用配置的密钥请求头触发 `/api/reverification/process`。
+
+## 生产环境验证
+
+生产部署后建议至少验证以下项目：
+
+1. `GET https://r2r.byebug.cn/api/public/leaderboard` returns `200`.
+2. `GET https://r2r.byebug.cn/api/auth/github?action=login` returns `authUrl`.
+3. The `authUrl` must include `redirect_uri=https://r2r.byebug.cn/api/auth/github`.
+4. 受保护接口（如 `/api/leaderboard`）在未提供 Bearer Token 时返回 `401`。
+
+## OAuth 配置说明
+
+- Vercel 中的 `R2R_GITHUB_REDIRECT_URI` 必须与 GitHub OAuth Callback URL 完全一致。
+- 若回调地址变更，更新环境变量后需要重新部署。

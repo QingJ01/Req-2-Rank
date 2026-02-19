@@ -1,10 +1,13 @@
 import type { ReactNode } from "react";
+import { appStore } from "./state.js";
 
 type RootLayoutProps = {
   children: ReactNode;
 };
 
-export default function RootLayout({ children }: RootLayoutProps) {
+export default async function RootLayout({ children }: RootLayoutProps) {
+  const topModels = await appStore.listLeaderboard({ limit: 3, offset: 0, sort: "desc" });
+
   return (
     <html lang="en">
       <body
@@ -30,9 +33,12 @@ export default function RootLayout({ children }: RootLayoutProps) {
               <a href="/" style={{ color: "#1f2430", textDecoration: "none" }}>
                 Leaderboard
               </a>
-              <a href="/model/openai%2Fgpt-4o-mini" style={{ color: "#1f2430", textDecoration: "none" }}>
-                Model View
-              </a>
+              <span style={{ opacity: 0.75 }}>Models</span>
+              {topModels.map((item) => (
+                <a key={item.model} href={`/model/${encodeURIComponent(item.model)}`} style={{ color: "#1f2430", textDecoration: "none" }}>
+                  {item.model.split("/")[1] ?? item.model}
+                </a>
+              ))}
             </nav>
           </div>
         </header>

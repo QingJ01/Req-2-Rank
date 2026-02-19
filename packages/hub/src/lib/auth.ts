@@ -1,4 +1,5 @@
 import { ValidationHook, createAuthValidator } from "../routes.js";
+import { resolveGithubOAuthSession } from "./github-oauth-session.js";
 
 export interface HeaderMap {
   authorization?: string;
@@ -55,9 +56,26 @@ export function createGitHubAuthValidator(fetchImpl: typeof fetch = fetch): Vali
   };
 }
 
+export function createGitHubOAuthSessionValidator(): ValidationHook {
+  return async (actorId: string, authToken?: string) => {
+    if (!authToken) {
+      throw new Error("not authorized");
+    }
+
+    const session = resolveGithubOAuthSession(authToken);
+    if (!session) {
+      throw new Error("not authorized");
+    }
+
+    if (session.actorId !== actorId) {
+      throw new Error("not authorized");
+    }
+  };
+}
+
 export function createEnvAuthValidator(): ValidationHook {
   if (process.env.R2R_GITHUB_OAUTH === "true") {
-    return createGitHubAuthValidator();
+    return createGitHubOAuthSessionValidator();
   }
 
   const expectedToken = process.env.R2R_HUB_TOKEN ?? "dev-token";

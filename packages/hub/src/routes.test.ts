@@ -17,6 +17,7 @@ describe("hub route skeletons", () => {
     const validate = createAuthValidator("token-1");
     const nonceHandler = createNonceHandler(validate, store);
     const submitHandler = createSubmitHandler(validate, store);
+    const todayIso = new Date().toISOString();
 
     const nonceResult = await nonceHandler({
       actorId: "user-1",
@@ -280,6 +281,113 @@ describe("hub route skeletons", () => {
       throw new Error("expected flag success");
     }
     expect(flagged.data.status).toBe("queued");
+  });
+
+  it("preserves dimension scores and evidence chain in submission detail", async () => {
+    const store = createSubmissionStore();
+    const validate = createAuthValidator("token-1");
+    const nonceHandler = createNonceHandler(validate, store);
+    const submitHandler = createSubmitHandler(validate, store);
+
+    const nonce = await nonceHandler({ actorId: "user-1", authToken: "token-1", body: { userId: "user-1" } });
+    if (!nonce.ok) {
+      throw new Error("expected nonce success");
+    }
+
+    await submitHandler({
+      actorId: "user-1",
+      authToken: "token-1",
+      body: {
+        runId: "run-detail-1",
+        nonce: nonce.data.nonce,
+        targetProvider: "openai",
+        targetModel: "gpt-4o-mini",
+        overallScore: 87,
+        dimensionScores: {
+          functionalCompleteness: 88,
+          codeQuality: 86,
+          logicAccuracy: 90,
+          security: 80,
+          engineeringPractice: 84
+        },
+        submittedAt: new Date("2026-01-01T00:00:00.000Z").toISOString(),
+        evidenceChain: {
+          timeline: [
+            {
+              phase: "generate",
+              startedAt: "2026-01-01T00:00:00.000Z",
+              completedAt: "2026-01-01T00:00:01.000Z",
+              model: "system"
+            },
+            {
+              phase: "execute",
+              startedAt: "2026-01-01T00:00:01.000Z",
+              completedAt: "2026-01-01T00:00:03.000Z",
+              model: "target"
+            }
+          ],
+          samples: [{ roundIndex: 0, requirement: "demo", codeSubmission: "export const ok = true;" }],
+          environment: { os: "win32", nodeVersion: "v22", timezone: "UTC" }
+        }
+      }
+    });
+
+    const detail = await store.getSubmission("run-detail-1");
+    expect(detail).toBeDefined();
+    expect(detail?.dimensionScores.logicAccuracy).toBe(90);
+    expect(detail?.evidenceChain?.timeline).toHaveLength(2);
+    expect(detail?.evidenceChain?.samples[0]?.codeSubmission).toContain("ok");
+  });
+
+  it("enforces daily submission limit per actor", async () => {
+    process.env.R2R_DAILY_SUBMISSION_LIMIT = "2";
+    const store = createSubmissionStore();
+    const validate = createAuthValidator("token-1");
+    const nonceHandler = createNonceHandler(validate, store);
+    const submitHandler = createSubmitHandler(validate, store);
+    const todayIso = new Date().toISOString();
+
+    const makeBody = (runId: string, nonce: string) => ({
+      runId,
+      nonce,
+      targetProvider: "openai",
+      targetModel: "gpt-4o-mini",
+      overallScore: 88,
+      submittedAt: todayIso,
+      evidenceChain: {
+        timeline: [
+          {
+            phase: "generate" as const,
+            startedAt: "2026-01-01T00:00:00.000Z",
+            completedAt: "2026-01-01T00:00:01.000Z",
+            model: "system"
+          }
+        ],
+        samples: [{ roundIndex: 0, requirement: "demo", codeSubmission: "ok" }],
+        environment: { os: "win32", nodeVersion: "v22", timezone: "UTC" }
+      }
+    });
+
+    const nonce1 = await nonceHandler({ actorId: "user-1", authToken: "token-1", body: { userId: "user-1" } });
+    const nonce2 = await nonceHandler({ actorId: "user-1", authToken: "token-1", body: { userId: "user-1" } });
+    const nonce3 = await nonceHandler({ actorId: "user-1", authToken: "token-1", body: { userId: "user-1" } });
+    if (!nonce1.ok || !nonce2.ok || !nonce3.ok) {
+      throw new Error("expected nonce success");
+    }
+
+    const submit1 = await submitHandler({ actorId: "user-1", authToken: "token-1", body: makeBody("run-limit-1", nonce1.data.nonce) });
+    const submit2 = await submitHandler({ actorId: "user-1", authToken: "token-1", body: makeBody("run-limit-2", nonce2.data.nonce) });
+    const submit3 = await submitHandler({ actorId: "user-1", authToken: "token-1", body: makeBody("run-limit-3", nonce3.data.nonce) });
+
+    expect(submit1.ok).toBe(true);
+    expect(submit2.ok).toBe(true);
+    expect(submit3.ok).toBe(false);
+    if (submit3.ok) {
+      throw new Error("expected daily limit failure");
+    }
+    expect(submit3.error.message).toContain("daily submission limit");
+
+    delete process.env.R2R_DAILY_SUBMISSION_LIMIT;
   });
 
   it("returns nonce payload", async () => {

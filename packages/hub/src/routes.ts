@@ -30,6 +30,7 @@ export interface SubmissionDetail {
   ci95: [number, number];
   agreementLevel: "high" | "moderate" | "low";
   dimensionScores: Record<string, number>;
+  evidenceChain?: SubmissionRequest["evidenceChain"];
   submittedAt: string;
   verificationStatus: "pending" | "verified" | "disputed";
 }
@@ -80,11 +81,13 @@ interface StoredNonce {
 
 interface StoredSubmission {
   runId: string;
+  actorId: string;
   model: string;
   score: number;
   ci95: [number, number];
   agreementLevel: "high" | "moderate" | "low";
   dimensionScores: Record<string, number>;
+  evidenceChain?: SubmissionRequest["evidenceChain"];
   submittedAt: string;
   verificationStatus: "pending" | "verified" | "disputed";
 }
@@ -98,7 +101,8 @@ interface ReverificationJob {
 export interface SubmissionStore {
   issueNonce(actorId: string): Promise<NonceResponse>;
   consumeNonce(actorId: string, nonce: string, now?: Date): Promise<void>;
-  saveSubmission(payload: SubmissionRequest): Promise<void>;
+  saveSubmission(payload: SubmissionRequest, actorId?: string): Promise<void>;
+  countSubmissionsForActorDay(actorId: string, dayIsoDate: string): Promise<number>;
   listLeaderboard(query: LeaderboardQuery): Promise<LeaderboardEntry[]>;
   queueReverification(runId: string, reason: "top-score" | "flagged"): Promise<ReverificationResponse>;
   hasSubmission(runId: string): Promise<boolean>;
@@ -106,6 +110,24 @@ export interface SubmissionStore {
   listModelSubmissions(model: string): Promise<SubmissionDetail[]>;
   listQueuedReverificationJobs(limit?: number): Promise<ReverificationJobDetail[]>;
   resolveReverificationJob(runId: string, status: "verified" | "disputed"): Promise<void>;
+}
+
+function resolveDailySubmissionLimit(): number {
+  const raw = process.env.R2R_DAILY_SUBMISSION_LIMIT;
+  if (!raw) {
+    return 20;
+  }
+
+  const parsed = Number(raw);
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    return 20;
+  }
+
+  return parsed;
+}
+
+function toIsoDate(value: Date): string {
+  return value.toISOString().slice(0, 10);
 }
 
 function validateTimeline(payload: SubmissionRequest): void {
@@ -178,6 +200,7 @@ function toDetail(input: StoredSubmission): SubmissionDetail {
     ci95: input.ci95,
     agreementLevel: input.agreementLevel,
     dimensionScores: input.dimensionScores,
+    evidenceChain: input.evidenceChain,
     submittedAt: input.submittedAt,
     verificationStatus: input.verificationStatus
   };
@@ -231,14 +254,16 @@ export function createSubmissionStore(): SubmissionStore {
       target.usedAt = now.toISOString();
     },
 
-    async saveSubmission(payload: SubmissionRequest): Promise<void> {
+    async saveSubmission(payload: SubmissionRequest, actorId = "system"): Promise<void> {
       submissions.push({
         runId: payload.runId,
+        actorId,
         model: `${payload.targetProvider}/${payload.targetModel}`,
         score: payload.overallScore,
         ci95: payload.ci95 ?? [payload.overallScore, payload.overallScore],
         agreementLevel: payload.agreementLevel ?? "moderate",
         dimensionScores: payload.dimensionScores ?? {},
+        evidenceChain: payload.evidenceChain,
         submittedAt: payload.submittedAt,
         verificationStatus: payload.overallScore >= 90 ? "pending" : "verified"
       });
@@ -246,6 +271,10 @@ export function createSubmissionStore(): SubmissionStore {
       if (payload.overallScore >= 90) {
         jobs.push({ runId: payload.runId, reason: "top-score", queuedAt: new Date().toISOString() });
       }
+    },
+
+    async countSubmissionsForActorDay(actorId: string, dayIsoDate: string): Promise<number> {
+      return submissions.filter((item) => item.actorId === actorId && item.submittedAt.slice(0, 10) === dayIsoDate).length;
     },
 
     async listLeaderboard(query: LeaderboardQuery): Promise<LeaderboardEntry[]> {
@@ -452,9 +481,15 @@ export function createSubmitHandler(validate: ValidationHook, store: SubmissionS
   return async (context: RouteContext<SubmissionRequest>): Promise<RouteEnvelope<SubmissionResponse>> => {
     try {
       await validate(context.actorId, context.authToken);
+      const dailyLimit = resolveDailySubmissionLimit();
+      const submittedToday = await store.countSubmissionsForActorDay(context.actorId, toIsoDate(new Date()));
+      if (submittedToday >= dailyLimit) {
+        throw new Error(`daily submission limit exceeded (${dailyLimit})`);
+      }
+
       await store.consumeNonce(context.actorId, context.body.nonce);
       const data = await postSubmitRoute(context.body);
-      await store.saveSubmission(context.body);
+      await store.saveSubmission(context.body, context.actorId);
       return {
         ok: true,
         status: 200,
