@@ -149,6 +149,8 @@ Req2Rank 通过当前工作目录下的 `req2rank.config.json` 进行配置。�
 | `serverUrl` | `string` | 启用时必填 | Hub 服务器地址 |
 | `token` | `string` | 启用时必填 | Bearer Token（通过 GitHub OAuth 获取） |
 
+你可以在 Hub 登录页 `https://req2rank.top/auth` 登录后，直接一键下载已填充 `hub.token` 的 `req2rank.config.json`。
+
 ---
 
 ## 环境变量

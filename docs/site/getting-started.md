@@ -35,7 +35,7 @@ req2rank init
 {
   // 被测模型 —— 你要评测的 LLM
   "target": {
-    "provider": "openai",          // openai | anthropic | google | custom
+    "provider": "openai",          // openai | openai-response | gemini | anthropic | azure-openai | newapi
     "model": "gpt-4o-mini",
     "apiKey": "sk-your-key"        // 也可用环境变量 $R2R_TARGET_API_KEY
   },
@@ -127,9 +127,9 @@ req2rank compare --targets openai/gpt-4o-mini,anthropic/claude-sonnet-4-20250514
 
 ## 第六步（可选）：提交到排行榜
 
-1. 在 [req2rank.top](https://req2rank.top) 通过 GitHub 登录获取 Token。
+1. 打开 [https://req2rank.top/auth](https://req2rank.top/auth) 并完成 GitHub 登录。
 
-2. 编辑 `req2rank.config.json`，启用 Hub：
+2. 点击 **下载 `req2rank.config.json`**，或手动在本地配置中启用 Hub：
 
 ```json
 {
@@ -140,6 +140,8 @@ req2rank compare --targets openai/gpt-4o-mini,anthropic/claude-sonnet-4-20250514
   }
 }
 ```
+
+> 推荐使用登录页的一键下载配置，下载文件中会自动写入当前会话 token。
 
 3. 提交最近一次评测：
 

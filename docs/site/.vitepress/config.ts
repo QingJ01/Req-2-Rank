@@ -6,17 +6,20 @@ export default defineConfig({
   themeConfig: {
     nav: [
       { text: "快速开始", link: "/getting-started" },
+      { text: "命令总览", link: "/guide" },
       { text: "配置说明", link: "/configuration" },
-      { text: "Hub", link: "/hub" }
+      { text: "Hub", link: "https://req2rank.top", target: "_blank", rel: "noreferrer" }
     ],
     sidebar: [
       {
         text: "文档",
         items: [
           { text: "快速开始", link: "/getting-started" },
+          { text: "命令总览", link: "/guide" },
           { text: "配置说明", link: "/configuration" },
+          { text: "API 参考", link: "/api" },
           { text: "评分方法", link: "/scoring-methodology" },
-          { text: "Hub API 与页面", link: "/hub" },
+          { text: "Hub 排行榜", link: "/hub" },
           { text: "贡献指南", link: "/contributing" }
         ]
       }

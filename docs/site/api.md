@@ -57,6 +57,28 @@ Authorization: Bearer <R2R_HUB_TOKEN>
 
 通过 GitHub OAuth 登录获取 `r2r_session` Cookie，自动鉴权。
 
+### OAuth 辅助接口（Hub 登录与配置下载）
+
+这些接口主要用于浏览器登录流程与 CLI 配置下载：
+
+| 接口 | 说明 |
+|------|------|
+| `GET /api/auth/github?action=login` | 返回 GitHub OAuth 跳转地址（`authUrl`） |
+| `GET /api/auth/github?action=session` | 查询当前 `r2r_session` 是否有效 |
+| `GET /api/auth/github?action=cli-config` | 下载已启用 Hub 的 `req2rank.config.json`（需已登录） |
+
+`action=cli-config` 返回 `application/json` 附件，文件名为 `req2rank.config.json`，并自动包含：
+
+```json
+{
+  "hub": {
+    "enabled": true,
+    "serverUrl": "https://req2rank.top",
+    "token": "<your-token>"
+  }
+}
+```
+
 ---
 
 ## 公开接口

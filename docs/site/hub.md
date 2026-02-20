@@ -26,14 +26,14 @@ Hub 是 Req2Rank 的中心化排行榜服务，接收评测提交、执行诚信
 
 ## 一键获取 CLI 配置
 
-登录后可在 `/auth` 页面直接点击 **下载 `req2rank.config.json`**，文件会自动写入当前会话的 Hub Token，并启用 Hub：
+登录后可在 `/auth` 页面直接点击 **下载 `req2rank.config.json`**（等价接口：`/api/auth/github?action=cli-config`），文件会自动写入当前会话的 Hub Token，并启用 Hub：
 
 ```json
 {
   "hub": {
     "enabled": true,
     "serverUrl": "https://req2rank.top",
-    "token": "<your-session-token>"
+    "token": "<your-token>"
   }
 }
 ```

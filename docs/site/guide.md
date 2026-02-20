@@ -190,6 +190,40 @@ req2rank submit --latest
 req2rank submit run-20260220-143000
 ```
 
+### Hub 配置命令指南（推荐）
+
+首次提交前，推荐按这组最短路径完成配置：
+
+```bash
+# 1) 初始化配置（如尚未初始化）
+req2rank init
+
+# 2) 打开登录页，完成 GitHub 登录
+# https://req2rank.top/auth
+
+# 3) 在登录页点击“下载 req2rank.config.json”
+#    将其中 hub 字段合并到本地配置
+
+# 4) 运行一次评测并提交
+req2rank run --rounds 1
+req2rank submit --latest
+
+# 5) 查看排行榜确认上榜
+req2rank leaderboard --output table
+```
+
+如果你不使用下载文件，也可手动在 `req2rank.config.json` 中设置：
+
+```json
+{
+  "hub": {
+    "enabled": true,
+    "serverUrl": "https://req2rank.top",
+    "token": "<your-token>"
+  }
+}
+```
+
 ---
 
 ## `req2rank leaderboard`
