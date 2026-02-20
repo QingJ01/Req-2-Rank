@@ -140,6 +140,45 @@ describe("github auth callback route", () => {
     expect(badCallback.ok).toBe(false);
   });
 
+  it("redirects browser login requests to GitHub auth url", async () => {
+    process.env.R2R_GITHUB_CLIENT_ID = "client-id-1";
+
+    const response = await GET(new Request("http://localhost/api/auth/github?action=login&redirect=/auth"));
+    expect(response.status).toBe(302);
+    const location = response.headers.get("location") ?? "";
+    expect(location).toContain("https://github.com/login/oauth/authorize?");
+    expect(location).toContain("redirect%3D%252Fauth");
+  });
+
+  it("keeps JSON mode for programmatic login url fetch", async () => {
+    process.env.R2R_GITHUB_CLIENT_ID = "client-id-1";
+
+    const response = await GET(new Request("http://localhost/api/auth/github?action=login&format=json"));
+    expect(response.status).toBe(200);
+    const payload = (await response.json()) as { ok?: boolean; data?: { authUrl?: string } };
+    expect(payload.ok).toBe(true);
+    expect(payload.data?.authUrl).toContain("https://github.com/login/oauth/authorize?");
+  });
+
+  it("reads session token from cookie for session action", async () => {
+    const sessionToken = await issueGithubOAuthSession({
+      actorId: "cookie-user",
+      accessToken: "gho_cookie"
+    });
+
+    const response = await GET(
+      new Request("http://localhost/api/auth/github?action=session", {
+        headers: {
+          cookie: `r2r_session=${sessionToken}`
+        }
+      })
+    );
+    expect(response.status).toBe(200);
+    const payload = (await response.json()) as { ok?: boolean; data?: { actorId?: string } };
+    expect(payload.ok).toBe(true);
+    expect(payload.data?.actorId).toBe("cookie-user");
+  });
+
   it("returns 401 for cli-config when session is missing", async () => {
     const response = await GET(new Request("http://localhost/api/auth/github?action=cli-config"));
     expect(response.status).toBe(401);

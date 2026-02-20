@@ -169,7 +169,7 @@ export function AdminDashboardClient() {
 
   async function loadGithubLoginUrl(): Promise<void> {
     try {
-      const response = await fetch("/api/auth/github?action=login", { credentials: "include" });
+      const response = await fetch("/api/auth/github?action=login&format=json", { credentials: "include" });
       const payload = (await response.json()) as { ok?: boolean; data?: { authUrl?: string } };
       if (payload.ok && payload.data?.authUrl) {
         setAuthUrl(payload.data.authUrl);

@@ -195,6 +195,7 @@ export async function GET(request: Request): Promise<Response> {
   }
 
   if (action === "login") {
+    const responseFormat = url.searchParams.get("format") ?? "redirect";
     const redirect = url.searchParams.get("redirect") ?? undefined;
     const explicitRedirectUri = url.searchParams.get("redirect_uri") ?? undefined;
     const baseRedirectUri = explicitRedirectUri ?? process.env.R2R_GITHUB_REDIRECT_URI ?? "http://localhost:3000/api/auth/github";
@@ -206,12 +207,27 @@ export async function GET(request: Request): Promise<Response> {
       actorIdHint: url.searchParams.get("actor") ?? undefined,
       redirectUri: loginRedirectUri
     });
-    return Response.json(login, { status: login.status });
+    if (responseFormat === "json") {
+      return Response.json(login, { status: login.status });
+    }
+    if (!login.ok) {
+      return Response.json(login, { status: login.status });
+    }
+    return new Response(null, {
+      status: 302,
+      headers: {
+        location: login.data.authUrl
+      }
+    });
   }
 
   if (action === "session") {
     await gcGithubOAuthSessionStore();
-    const sessionToken = request.headers.get("x-session-token") ?? url.searchParams.get("session") ?? "";
+    const sessionToken =
+      request.headers.get("x-session-token") ??
+      url.searchParams.get("session") ??
+      readCookie(request, "r2r_session") ??
+      "";
     const session = await resolveGithubOAuthSession(sessionToken);
     if (!session) {
       return Response.json(

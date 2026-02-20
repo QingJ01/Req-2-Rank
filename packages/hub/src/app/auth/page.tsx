@@ -21,10 +21,17 @@ export default async function AuthPage({ searchParams }: AuthPageProps) {
       <h1>{t(lang, "authTitle")}</h1>
       <p className="hub-muted">{t(lang, "authDesc")}</p>
       {error ? <p className="hub-muted">{lang === "en" ? `Login failed: ${error}` : `登录失败：${error}`}</p> : null}
+      {session ? (
+        <p className="hub-muted">
+          {t(lang, "authLoggedInAs")}: {session.actorId} · {t(lang, "authLoggedInHint")}
+        </p>
+      ) : null}
       <div className="hub-flex-bar">
-        <a className="hub-viz-button" href="/api/auth/github?action=login&redirect=/auth">
-          {t(lang, "loginWithGithub")}
-        </a>
+        {!session ? (
+          <a className="hub-viz-button" href="/api/auth/github?action=login&redirect=/auth">
+            {t(lang, "loginWithGithub")}
+          </a>
+        ) : null}
         <a className="hub-viz-button" href="/api/auth/github?action=logout&redirect=/auth">
           {t(lang, "logoutAction")}
         </a>
