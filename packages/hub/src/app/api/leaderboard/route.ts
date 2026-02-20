@@ -1,12 +1,12 @@
-import { RouteEnvelope, createLeaderboardHandler } from "../../../routes.js";
-import { LeaderboardEntry, LeaderboardQuery } from "@req2rank/core";
+import { ExtendedLeaderboardQuery, RouteEnvelope, createLeaderboardHandler } from "../../../routes.js";
+import { LeaderboardEntry } from "@req2rank/core";
 import { parseBearerToken } from "../../../lib/auth.js";
 import { appStore, appValidate } from "../../state.js";
 
 export interface LeaderboardRouteInput {
   actorId: string;
   headers: { authorization?: string };
-  query: LeaderboardQuery;
+  query: ExtendedLeaderboardQuery;
 }
 
 const handler = createLeaderboardHandler(appValidate, appStore);
@@ -32,7 +32,8 @@ export async function GET(request: Request): Promise<Response> {
       offset: url.searchParams.get("offset") ?? undefined,
       sort: url.searchParams.get("sort") ?? undefined,
       complexity: url.searchParams.get("complexity") ?? undefined,
-      dimension: url.searchParams.get("dimension") ?? undefined
+      dimension: url.searchParams.get("dimension") ?? undefined,
+      strategy: url.searchParams.get("strategy") ?? undefined
     }
   });
 

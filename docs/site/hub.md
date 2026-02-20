@@ -12,6 +12,7 @@
 - `GET /api/public/leaderboard`
 - `GET /api/public/model/:id`
 - `GET /api/public/live/stream`
+  - `strategy=mean|best|latest` 可选排行榜聚合策略
 
 ## Hub 内部代理接口
 
@@ -29,6 +30,7 @@
 - `POST /api/reverification/process`
 - `GET /api/admin/reports`（管理员）
 - `POST /api/admin/reports/resolve`（管理员）
+- `GET /api/admin/reports/evidence`（管理员）
 
 ## Hub 页面入口
 
@@ -37,6 +39,7 @@
 - `/submission/:id` 提交详情页
 - `/workbench` 实时监控与时间线回放
 - `/admin` 管理后台
+- `/auth` 登录/会话管理页
 
 ## 本地最小闭环流程
 
@@ -73,3 +76,9 @@
 - 管理后台与管理员 API 依赖 GitHub OAuth Session（`r2r_session`）。
 - 默认管理员 GitHub 账号为 `QingJ01`。
 - 可通过环境变量 `R2R_ADMIN_GITHUB_LOGIN` 覆盖默认管理员账号。
+- 管理员操作接口使用 CSRF 校验（`x-csrf-token` + `r2r_admin_csrf`）。
+
+## 复验自动模式
+
+- `R2R_REVERIFY_MODE=auto` 时，`GET /api/reverification/process` 可通过 cron 头触发（如 `x-vercel-cron`）。
+- 手动模式仍可通过 `POST /api/reverification/process` + `x-reverify-secret` 触发。

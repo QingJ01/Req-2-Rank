@@ -14,5 +14,16 @@ export async function POST(request: Request): Promise<Response> {
 }
 
 export async function GET(): Promise<Response> {
-  return Response.json({ ok: true, status: 200, data: await listCommunityReports() }, { status: 200 });
+  const result = await listCommunityReports();
+  return Response.json(
+    {
+      ok: true,
+      status: 200,
+      data: result.items,
+      meta: {
+        total: result.total
+      }
+    },
+    { status: 200 }
+  );
 }

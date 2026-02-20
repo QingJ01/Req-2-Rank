@@ -1,8 +1,9 @@
 import { resolveGithubOAuthSession } from "./github-oauth-session.js";
 
 const DEFAULT_ADMIN_LOGIN = "QingJ01";
+export const ADMIN_CSRF_COOKIE = "r2r_admin_csrf";
 
-function readCookie(request: Request, key: string): string | undefined {
+export function readCookie(request: Request, key: string): string | undefined {
   const cookieHeader = request.headers.get("cookie");
   if (!cookieHeader) {
     return undefined;
@@ -16,6 +17,28 @@ function readCookie(request: Request, key: string): string | undefined {
     }
   }
   return undefined;
+}
+
+export function createCsrfToken(): string {
+  return `${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`;
+}
+
+export function csrfCookieHeader(token: string): string {
+  return `${ADMIN_CSRF_COOKIE}=${encodeURIComponent(token)}; Path=/; SameSite=Strict`;
+}
+
+export function resolveCsrfCookieToken(request: Request): string | undefined {
+  return readCookie(request, ADMIN_CSRF_COOKIE);
+}
+
+export function resolveCsrfHeaderToken(request: Request): string | undefined {
+  return request.headers.get("x-csrf-token") ?? undefined;
+}
+
+export function validateAdminCsrf(request: Request): boolean {
+  const cookieToken = resolveCsrfCookieToken(request);
+  const headerToken = resolveCsrfHeaderToken(request);
+  return Boolean(cookieToken && headerToken && cookieToken === headerToken);
 }
 
 export function resolveAdminLogin(): string {

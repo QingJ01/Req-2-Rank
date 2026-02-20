@@ -56,3 +56,25 @@ export const calibrationSnapshotsTable = pgTable("hub_calibration_snapshots", {
   sampleSize: integer("sample_size").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
 });
+
+export const communityReportsTable = pgTable("hub_community_reports", {
+  id: text("id").primaryKey(),
+  runId: text("run_id").notNull(),
+  reason: text("reason").notNull(),
+  details: text("details"),
+  status: text("status").notNull().default("open"),
+  resolverActorId: text("resolver_actor_id"),
+  resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+});
+
+export const adminActionLogsTable = pgTable("hub_admin_action_logs", {
+  id: integer("id").generatedAlwaysAsIdentity().primaryKey(),
+  actorId: text("actor_id").notNull(),
+  action: text("action").notNull(),
+  reportId: text("report_id"),
+  runId: text("run_id"),
+  queueReverification: boolean("queue_reverification").notNull().default(false),
+  metadata: jsonb("metadata").notNull().default({}),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+});

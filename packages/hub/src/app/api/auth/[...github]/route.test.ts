@@ -60,7 +60,7 @@ describe("github auth callback route", () => {
     expect(result.error.message).toContain("R2R_GITHUB_CLIENT_ID");
   });
 
-  it("supports HTTP callback handler", async () => {
+  it("supports HTTP callback handler with redirect", async () => {
     process.env.R2R_GITHUB_CLIENT_ID = "client-id-1";
     process.env.R2R_GITHUB_CLIENT_SECRET = "client-secret-1";
     vi.stubGlobal(
@@ -82,10 +82,16 @@ describe("github auth callback route", () => {
     );
 
     const response = await GET(new Request("http://localhost/api/auth/github?code=oauth-code-2"));
-    expect(response.status).toBe(200);
-    const payload = (await response.json()) as { ok: boolean; data: { provider: string } };
-    expect(payload.ok).toBe(true);
-    expect(payload.data.provider).toBe("github");
+    expect(response.status).toBe(302);
+    expect(response.headers.get("location")).toContain("/admin");
+    expect(response.headers.get("set-cookie")).toContain("r2r_session=");
+  });
+
+  it("supports logout action and clears session cookie", async () => {
+    const response = await GET(new Request("http://localhost/api/auth/github?action=logout&redirect=/auth"));
+    expect(response.status).toBe(302);
+    expect(response.headers.get("location")).toContain("/auth");
+    expect(response.headers.get("set-cookie")).toContain("r2r_session=");
   });
 
   it("creates login state and validates callback state", async () => {

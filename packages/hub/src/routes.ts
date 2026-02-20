@@ -6,12 +6,17 @@ import {
   SubmissionResponse,
   parseLeaderboardQuery
 } from "@req2rank/core";
+import { LeaderboardAggregationStrategy, resolveLeaderboardStrategy } from "./lib/leaderboard-strategy.js";
 
 export interface NonceRequest {
   userId: string;
 }
 
-export interface LeaderboardRequest extends LeaderboardQuery {}
+export interface ExtendedLeaderboardQuery extends LeaderboardQuery {
+  strategy?: string;
+}
+
+export interface LeaderboardRequest extends ExtendedLeaderboardQuery {}
 
 export interface FlagSubmissionRequest {
   runId: string;
@@ -121,12 +126,82 @@ interface StoredCalibration {
   createdAt: string;
 }
 
+function aggregateModelEntries(
+  submissions: StoredSubmission[],
+  sort: "asc" | "desc",
+  strategy: LeaderboardAggregationStrategy,
+  dimension?: string,
+  offset = 0,
+  limit = 20
+): LeaderboardEntry[] {
+  const metric = (submission: StoredSubmission): number => {
+    if (!dimension) {
+      return submission.score;
+    }
+    return submission.dimensionScores[dimension] ?? 0;
+  };
+
+  const grouped = new Map<string, StoredSubmission[]>();
+  for (const submission of submissions) {
+    const list = grouped.get(submission.model) ?? [];
+    list.push(submission);
+    grouped.set(submission.model, list);
+  }
+
+  const entries = Array.from(grouped.entries()).map(([model, group]) => {
+    const latest = group.slice().sort((left, right) => right.submittedAt.localeCompare(left.submittedAt))[0] ?? group[0];
+    const best = group.slice().sort((left, right) => metric(right) - metric(left))[0] ?? group[0];
+
+    let score = best.score;
+    let ci95: [number, number] = best.ci95;
+    let verificationStatus: "pending" | "verified" | "disputed" = best.verificationStatus;
+    let rankMetric = metric(best);
+
+    if (strategy === "latest") {
+      score = latest.score;
+      ci95 = latest.ci95;
+      verificationStatus = latest.verificationStatus;
+      rankMetric = metric(latest);
+    } else if (strategy === "mean") {
+      score = group.reduce((sum, item) => sum + item.score, 0) / group.length;
+      ci95 = [
+        group.reduce((sum, item) => sum + (item.ci95?.[0] ?? item.score), 0) / group.length,
+        group.reduce((sum, item) => sum + (item.ci95?.[1] ?? item.score), 0) / group.length
+      ];
+      rankMetric = group.reduce((sum, item) => sum + metric(item), 0) / group.length;
+      const hasDisputed = group.some((item) => item.verificationStatus === "disputed");
+      const hasPending = group.some((item) => item.verificationStatus === "pending");
+      verificationStatus = hasDisputed ? "disputed" : hasPending ? "pending" : "verified";
+    }
+
+    return {
+      model,
+      score,
+      ci95,
+      verificationStatus,
+      metric: rankMetric
+    };
+  });
+
+  const sorted = entries
+    .sort((left, right) => (sort === "asc" ? left.metric - right.metric : right.metric - left.metric))
+    .slice(offset, offset + limit);
+
+  return sorted.map((entry, index) => ({
+    rank: offset + index + 1,
+    model: entry.model,
+    score: entry.score,
+    ci95: entry.ci95,
+    verificationStatus: entry.verificationStatus
+  }));
+}
+
 export interface SubmissionStore {
   issueNonce(actorId: string): Promise<NonceResponse>;
   consumeNonce(actorId: string, nonce: string, now?: Date): Promise<void>;
   saveSubmission(payload: SubmissionRequest, actorId?: string): Promise<void>;
   countSubmissionsForActorDay(actorId: string, dayIsoDate: string): Promise<number>;
-  listLeaderboard(query: LeaderboardQuery): Promise<LeaderboardEntry[]>;
+  listLeaderboard(query: ExtendedLeaderboardQuery): Promise<LeaderboardEntry[]>;
   queueReverification(runId: string, reason: "top-score" | "flagged"): Promise<ReverificationResponse>;
   hasSubmission(runId: string): Promise<boolean>;
   getSubmission(runId: string): Promise<SubmissionDetail | undefined>;
@@ -304,43 +379,11 @@ export function createSubmissionStore(): SubmissionStore {
       return submissions.filter((item) => item.actorId === actorId && item.submittedAt.slice(0, 10) === dayIsoDate).length;
     },
 
-    async listLeaderboard(query: LeaderboardQuery): Promise<LeaderboardEntry[]> {
+    async listLeaderboard(query: ExtendedLeaderboardQuery): Promise<LeaderboardEntry[]> {
       const { limit, offset, sort, complexity, dimension } = parseLeaderboardQuery(query);
-      const metric = (submission: StoredSubmission): number => {
-        if (!dimension) {
-          return submission.score;
-        }
-        return submission.dimensionScores[dimension] ?? 0;
-      };
-
-      const bestByModel = new Map<string, StoredSubmission>();
-
-      for (const submission of submissions.filter((item) => (complexity ? item.complexity === complexity : true))) {
-        const prev = bestByModel.get(submission.model);
-        if (prev === undefined || metric(submission) > metric(prev)) {
-          bestByModel.set(submission.model, submission);
-        }
-      }
-
-      const entries = Array.from(bestByModel.entries())
-        .map(([model, submission]) => ({ model, submission }))
-        .sort((left, right) =>
-          sort === "asc"
-            ? metric(left.submission) - metric(right.submission)
-            : metric(right.submission) - metric(left.submission)
-        )
-        .map((item, index) => ({
-          rank: index + 1,
-          model: item.model,
-          score: item.submission.score,
-          ci95: item.submission.ci95,
-          verificationStatus: item.submission.verificationStatus
-        }));
-
-      return entries.slice(offset, offset + limit).map((entry, index) => ({
-        ...entry,
-        rank: offset + index + 1
-      }));
+      const strategy = resolveLeaderboardStrategy((query as LeaderboardQuery & { strategy?: string }).strategy);
+      const filtered = submissions.filter((item) => (complexity ? item.complexity === complexity : true));
+      return aggregateModelEntries(filtered, sort, strategy, dimension, offset, limit);
     },
 
     async queueReverification(runId: string, reason: "top-score" | "flagged"): Promise<ReverificationResponse> {

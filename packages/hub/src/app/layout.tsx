@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { AuthStatusClient } from "./auth-status.client.js";
 import { HeaderNav } from "./header-nav.client.js";
 import { LangSync } from "./lang-sync.client.js";
 import { appStore } from "./state.js";
@@ -18,6 +19,7 @@ export default async function RootLayout({ children }: RootLayoutProps) {
           <div className="hub-header-inner">
             <strong className="hub-brand">Req2Rank Hub</strong>
             <HeaderNav topModels={topModels} />
+            <AuthStatusClient />
           </div>
         </header>
         <LangSync />

@@ -169,10 +169,30 @@ export async function GET(request: Request): Promise<Response> {
   const url = new URL(request.url);
   const action = url.searchParams.get("action") ?? (url.searchParams.get("code") ? "callback" : "session");
 
+  if (action === "logout") {
+    const redirect = url.searchParams.get("redirect") ?? "/auth";
+    const location = new URL(redirect, url.origin);
+    if (!location.searchParams.has("lang")) {
+      location.searchParams.set("lang", "zh");
+    }
+
+    const headers = new Headers();
+    headers.set("location", location.toString());
+    headers.set("set-cookie", "r2r_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0");
+    return new Response(null, { status: 302, headers });
+  }
+
   if (action === "login") {
+    const redirect = url.searchParams.get("redirect") ?? undefined;
+    const explicitRedirectUri = url.searchParams.get("redirect_uri") ?? undefined;
+    const baseRedirectUri = explicitRedirectUri ?? process.env.R2R_GITHUB_REDIRECT_URI ?? "http://localhost:3000/api/auth/github";
+    const loginRedirectUri = redirect
+      ? `${baseRedirectUri}${baseRedirectUri.includes("?") ? "&" : "?"}redirect=${encodeURIComponent(redirect)}`
+      : baseRedirectUri;
+
     const login = await startGithubAuthLogin({
       actorIdHint: url.searchParams.get("actor") ?? undefined,
-      redirectUri: url.searchParams.get("redirect_uri") ?? undefined
+      redirectUri: loginRedirectUri
     });
     return Response.json(login, { status: login.status });
   }
@@ -213,16 +233,28 @@ export async function GET(request: Request): Promise<Response> {
     actorIdHint: url.searchParams.get("actor") ?? undefined
   });
 
-  const headers = new Headers();
-  if (result.ok) {
-    headers.set("set-cookie", `r2r_session=${result.data.sessionToken}; Path=/; HttpOnly; SameSite=Lax`);
+  if (!result.ok) {
+    const fallback = new URL("/auth", url.origin);
+    fallback.searchParams.set("error", result.error.message);
+    if (!fallback.searchParams.has("lang")) {
+      fallback.searchParams.set("lang", "zh");
+    }
+    return new Response(null, {
+      status: 302,
+      headers: {
+        location: fallback.toString()
+      }
+    });
   }
 
-  return new Response(JSON.stringify(result), {
-    status: result.status,
-    headers: {
-      "content-type": "application/json",
-      ...Object.fromEntries(headers.entries())
-    }
-  });
+  const redirect = url.searchParams.get("redirect") ?? "/admin";
+  const location = new URL(redirect, url.origin);
+  if (!location.searchParams.has("lang")) {
+    location.searchParams.set("lang", "zh");
+  }
+
+  const headers = new Headers();
+  headers.set("location", location.toString());
+  headers.set("set-cookie", `r2r_session=${result.data.sessionToken}; Path=/; HttpOnly; SameSite=Lax`);
+  return new Response(null, { status: 302, headers });
 }

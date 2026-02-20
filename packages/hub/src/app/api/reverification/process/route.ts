@@ -1,10 +1,24 @@
 import { appStore } from "../../../../app/state.js";
 import { processQueuedReverificationJobs } from "../../../../reverification-worker.js";
 
-export async function POST(request: Request): Promise<Response> {
+function canUseAutoMode(request: Request): boolean {
+  if (process.env.R2R_REVERIFY_MODE !== "auto") {
+    return false;
+  }
+  return Boolean(request.headers.get("x-vercel-cron") || request.headers.get("x-reverify-cron") === "1");
+}
+
+function isAuthorized(request: Request): boolean {
   const secret = process.env.R2R_REVERIFY_SECRET;
   const incoming = request.headers.get("x-reverify-secret");
-  if (!secret || incoming !== secret) {
+  if (secret && incoming === secret) {
+    return true;
+  }
+  return canUseAutoMode(request);
+}
+
+async function processJobs(request: Request): Promise<Response> {
+  if (!isAuthorized(request)) {
     return Response.json(
       {
         ok: false,
@@ -24,4 +38,12 @@ export async function POST(request: Request): Promise<Response> {
     },
     { status: 200 }
   );
+}
+
+export async function POST(request: Request): Promise<Response> {
+  return processJobs(request);
+}
+
+export async function GET(request: Request): Promise<Response> {
+  return processJobs(request);
 }

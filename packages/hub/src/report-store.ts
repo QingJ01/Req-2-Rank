@@ -11,9 +11,34 @@ export interface CommunityReport {
   resolverActorId?: string;
 }
 
+export interface CommunityReportQuery {
+  status?: "all" | "open" | "resolved";
+  q?: string;
+  sortBy?: "createdAt" | "status";
+  sortOrder?: "asc" | "desc";
+  limit?: number;
+  offset?: number;
+}
+
+export interface CommunityReportQueryResult {
+  items: CommunityReport[];
+  total: number;
+}
+
+export interface AdminActionLog {
+  id: string;
+  actorId: string;
+  action: string;
+  reportId?: string;
+  runId?: string;
+  queueReverification: boolean;
+  metadata: Record<string, unknown>;
+  createdAt: string;
+}
+
 const reports: CommunityReport[] = [];
+const actionLogs: AdminActionLog[] = [];
 let sqlClient: Sql | undefined;
-let schemaReady = false;
 
 function getClient(): Sql | undefined {
   const databaseUrl = process.env.R2R_DATABASE_URL;
@@ -26,26 +51,7 @@ function getClient(): Sql | undefined {
   return sqlClient;
 }
 
-async function ensureSchema(client: Sql): Promise<void> {
-  if (schemaReady) {
-    return;
-  }
-  await client`
-    create table if not exists hub_community_reports (
-      id text primary key,
-      run_id text not null,
-      reason text not null,
-      details text,
-      status text not null default 'open',
-      resolver_actor_id text,
-      resolved_at timestamp with time zone,
-      created_at timestamp with time zone not null default now()
-    )
-  `;
-  schemaReady = true;
-}
-
-function fromRow(row: {
+function fromReportRow(row: {
   id: string;
   run_id: string;
   reason: string;
@@ -67,6 +73,64 @@ function fromRow(row: {
   };
 }
 
+function fromActionRow(row: {
+  id: number;
+  actor_id: string;
+  action: string;
+  report_id: string | null;
+  run_id: string | null;
+  queue_reverification: boolean;
+  metadata: Record<string, unknown> | null;
+  created_at: Date;
+}): AdminActionLog {
+  return {
+    id: String(row.id),
+    actorId: row.actor_id,
+    action: row.action,
+    reportId: row.report_id ?? undefined,
+    runId: row.run_id ?? undefined,
+    queueReverification: row.queue_reverification,
+    metadata: row.metadata ?? {},
+    createdAt: row.created_at.toISOString()
+  };
+}
+
+function applyQuery(items: CommunityReport[], query: CommunityReportQuery): CommunityReportQueryResult {
+  const status = query.status ?? "all";
+  const sortBy = query.sortBy ?? "createdAt";
+  const sortOrder = query.sortOrder ?? "desc";
+  const offset = Math.max(0, query.offset ?? 0);
+  const limit = Math.max(1, Math.min(query.limit ?? 20, 100));
+  const needle = (query.q ?? "").trim().toLowerCase();
+
+  let filtered = items.slice();
+  if (status === "open" || status === "resolved") {
+    filtered = filtered.filter((item) => item.status === status);
+  }
+  if (needle) {
+    filtered = filtered.filter((item) => `${item.runId} ${item.reason} ${item.details ?? ""}`.toLowerCase().includes(needle));
+  }
+
+  filtered.sort((left, right) => {
+    if (sortBy === "status") {
+      const l = left.status;
+      const r = right.status;
+      if (l === r) {
+        const delta = new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime();
+        return sortOrder === "asc" ? delta : -delta;
+      }
+      return sortOrder === "asc" ? l.localeCompare(r) : r.localeCompare(l);
+    }
+    const delta = new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime();
+    return sortOrder === "asc" ? delta : -delta;
+  });
+
+  return {
+    total: filtered.length,
+    items: filtered.slice(offset, offset + limit)
+  };
+}
+
 export async function submitCommunityReport(input: { runId: string; reason: string; details?: string }): Promise<CommunityReport> {
   const report: CommunityReport = {
     id: `report-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
@@ -83,7 +147,6 @@ export async function submitCommunityReport(input: { runId: string; reason: stri
     return report;
   }
 
-  await ensureSchema(client);
   const rows = await client<{
     id: string;
     run_id: string;
@@ -99,16 +162,15 @@ export async function submitCommunityReport(input: { runId: string; reason: stri
     returning id, run_id, reason, details, status, resolver_actor_id, resolved_at, created_at
   `;
 
-  return fromRow(rows[0]);
+  return fromReportRow(rows[0]);
 }
 
-export async function listCommunityReports(): Promise<CommunityReport[]> {
+export async function listCommunityReports(query: CommunityReportQuery = {}): Promise<CommunityReportQueryResult> {
   const client = getClient();
   if (!client) {
-    return reports.slice();
+    return applyQuery(reports, query);
   }
 
-  await ensureSchema(client);
   const rows = await client<{
     id: string;
     run_id: string;
@@ -121,10 +183,9 @@ export async function listCommunityReports(): Promise<CommunityReport[]> {
   }[]>`
     select id, run_id, reason, details, status, resolver_actor_id, resolved_at, created_at
     from hub_community_reports
-    order by created_at desc
   `;
 
-  return rows.map(fromRow);
+  return applyQuery(rows.map(fromReportRow), query);
 }
 
 export async function getCommunityReport(id: string): Promise<CommunityReport | undefined> {
@@ -133,7 +194,6 @@ export async function getCommunityReport(id: string): Promise<CommunityReport | 
     return reports.find((item) => item.id === id);
   }
 
-  await ensureSchema(client);
   const rows = await client<{
     id: string;
     run_id: string;
@@ -150,7 +210,7 @@ export async function getCommunityReport(id: string): Promise<CommunityReport | 
     limit 1
   `;
 
-  return rows[0] ? fromRow(rows[0]) : undefined;
+  return rows[0] ? fromReportRow(rows[0]) : undefined;
 }
 
 export async function resolveCommunityReport(id: string, resolverActorId?: string): Promise<CommunityReport | undefined> {
@@ -166,7 +226,6 @@ export async function resolveCommunityReport(id: string, resolverActorId?: strin
     return report;
   }
 
-  await ensureSchema(client);
   const rows = await client<{
     id: string;
     run_id: string;
@@ -183,5 +242,90 @@ export async function resolveCommunityReport(id: string, resolverActorId?: strin
     returning id, run_id, reason, details, status, resolver_actor_id, resolved_at, created_at
   `;
 
-  return rows[0] ? fromRow(rows[0]) : undefined;
+  return rows[0] ? fromReportRow(rows[0]) : undefined;
+}
+
+export async function logAdminAction(input: {
+  actorId: string;
+  action: string;
+  reportId?: string;
+  runId?: string;
+  queueReverification?: boolean;
+  metadata?: Record<string, unknown>;
+}): Promise<AdminActionLog> {
+  const record: AdminActionLog = {
+    id: `local-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
+    actorId: input.actorId,
+    action: input.action,
+    reportId: input.reportId,
+    runId: input.runId,
+    queueReverification: input.queueReverification ?? false,
+    metadata: input.metadata ?? {},
+    createdAt: new Date().toISOString()
+  };
+
+  const client = getClient();
+  if (!client) {
+    actionLogs.unshift(record);
+    return record;
+  }
+
+  const rows = (await client`
+    insert into hub_admin_action_logs (actor_id, action, report_id, run_id, queue_reverification, metadata)
+    values (
+      ${input.actorId},
+      ${input.action},
+      ${input.reportId ?? null},
+      ${input.runId ?? null},
+      ${input.queueReverification ?? false},
+      ${JSON.stringify(input.metadata ?? {})}::jsonb
+    )
+    returning id, actor_id, action, report_id, run_id, queue_reverification, metadata, created_at
+  `) as Array<{
+    id: number;
+    actor_id: string;
+    action: string;
+    report_id: string | null;
+    run_id: string | null;
+    queue_reverification: boolean;
+    metadata: Record<string, unknown> | null;
+    created_at: Date;
+  }>;
+
+  return fromActionRow(rows[0]);
+}
+
+export async function listAdminActionLogs(options: { reportId?: string; limit?: number } = {}): Promise<AdminActionLog[]> {
+  const limit = Math.max(1, Math.min(options.limit ?? 50, 200));
+  const client = getClient();
+  if (!client) {
+    const filtered = options.reportId ? actionLogs.filter((item) => item.reportId === options.reportId) : actionLogs;
+    return filtered.slice(0, limit);
+  }
+
+  const rows = (options.reportId
+    ? await client`
+        select id, actor_id, action, report_id, run_id, queue_reverification, metadata, created_at
+        from hub_admin_action_logs
+        where report_id = ${options.reportId}
+        order by created_at desc
+        limit ${limit}
+      `
+    : await client`
+        select id, actor_id, action, report_id, run_id, queue_reverification, metadata, created_at
+        from hub_admin_action_logs
+        order by created_at desc
+        limit ${limit}
+      `) as Array<{
+    id: number;
+    actor_id: string;
+    action: string;
+    report_id: string | null;
+    run_id: string | null;
+    queue_reverification: boolean;
+    metadata: Record<string, unknown> | null;
+    created_at: Date;
+  }>;
+
+  return rows.map(fromActionRow);
 }

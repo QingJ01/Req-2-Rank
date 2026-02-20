@@ -2,18 +2,21 @@ import { MiniTrend } from "./components/mini-trend.client.js";
 import { RadarChart } from "./components/radar-chart.client.js";
 import { DIMENSION_KEYS, statusBadgeClass, statusLabel } from "./components/viz-utils.js";
 import { localizePath, resolveLang } from "./i18n.js";
+import { resolveLeaderboardStrategy } from "../lib/leaderboard-strategy.js";
 import { appStore } from "./state.js";
 
 type LeaderboardPageProps = {
   searchParams?: {
     lang?: string;
+    strategy?: string;
   };
 };
 
 export default async function LeaderboardPage({ searchParams }: LeaderboardPageProps = {}) {
   const lang = resolveLang(searchParams?.lang);
   const isEn = lang === "en";
-  const entries = await appStore.listLeaderboard({ limit: 30, offset: 0, sort: "desc" });
+  const strategy = resolveLeaderboardStrategy(searchParams?.strategy);
+  const entries = await appStore.listLeaderboard({ limit: 30, offset: 0, sort: "desc", strategy });
   const calibrations = await appStore.listCalibrations(5);
 
   const trendModels = entries.slice(0, 10).map((item) => item.model);
@@ -35,6 +38,18 @@ export default async function LeaderboardPage({ searchParams }: LeaderboardPageP
     <section>
       <h1>{isEn ? "Leaderboard" : "排行榜"}</h1>
       <p className="hub-muted">{isEn ? "Community model scores and verification states." : "展示社区提交模型的得分与验证状态。"}</p>
+      <div style={{ marginBottom: 10, display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <span className="hub-muted">{isEn ? "Aggregation" : "聚合策略"}:</span>
+        <a className={strategy === "mean" ? "hub-nav-lang active" : "hub-nav-lang"} href={`/?lang=${lang}&strategy=mean`}>
+          {isEn ? "Mean" : "均值"}
+        </a>
+        <a className={strategy === "best" ? "hub-nav-lang active" : "hub-nav-lang"} href={`/?lang=${lang}&strategy=best`}>
+          {isEn ? "Best" : "最佳"}
+        </a>
+        <a className={strategy === "latest" ? "hub-nav-lang active" : "hub-nav-lang"} href={`/?lang=${lang}&strategy=latest`}>
+          {isEn ? "Latest" : "最近"}
+        </a>
+      </div>
       <div className="hub-grid cols-2">
         <div className="hub-card" style={{ overflow: "hidden" }}>
           <table className="hub-table">

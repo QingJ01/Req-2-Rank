@@ -2,8 +2,89 @@ import { and, desc, eq, gt, isNull, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { LeaderboardEntry, LeaderboardQuery, NonceResponse, SubmissionRequest, parseLeaderboardQuery } from "@req2rank/core";
-import { ReverificationJobDetail, SubmissionDetail, SubmissionStore } from "../../routes.js";
+import { ExtendedLeaderboardQuery, ReverificationJobDetail, SubmissionDetail, SubmissionStore } from "../../routes.js";
+import { LeaderboardAggregationStrategy, resolveLeaderboardStrategy } from "../leaderboard-strategy.js";
 import { calibrationSnapshotsTable, noncesTable, reverificationJobsTable, submissionsTable } from "./schema.js";
+
+type LeaderboardRow = {
+  model: string;
+  score: number;
+  ciLow: number;
+  ciHigh: number;
+  submittedAt: Date;
+  dimensionScores: Record<string, number>;
+  verificationStatus: "pending" | "verified" | "disputed";
+};
+
+function aggregateLeaderboardRows(
+  rows: LeaderboardRow[],
+  sort: "asc" | "desc",
+  strategy: LeaderboardAggregationStrategy,
+  dimension?: string,
+  offset = 0,
+  limit = 20
+): LeaderboardEntry[] {
+  const metric = (row: LeaderboardRow): number => {
+    if (!dimension) {
+      return Number(row.score);
+    }
+    return Number(row.dimensionScores?.[dimension] ?? 0);
+  };
+
+  const grouped = new Map<string, LeaderboardRow[]>();
+  for (const row of rows) {
+    const group = grouped.get(row.model) ?? [];
+    group.push(row);
+    grouped.set(row.model, group);
+  }
+
+  const aggregated = Array.from(grouped.entries()).map(([model, group]) => {
+    const count = group.length;
+    const best = group.slice().sort((left, right) => metric(right) - metric(left))[0] ?? group[0];
+    const latest = group.slice().sort((left, right) => right.submittedAt.getTime() - left.submittedAt.getTime())[0] ?? group[0];
+
+    let score = Number(best.score);
+    let ci95: [number, number] = [Number(best.ciLow), Number(best.ciHigh)];
+    let rankMetric = metric(best);
+    let verificationStatus: "pending" | "verified" | "disputed" = best.verificationStatus;
+
+    if (strategy === "latest") {
+      score = Number(latest.score);
+      ci95 = [Number(latest.ciLow), Number(latest.ciHigh)];
+      rankMetric = metric(latest);
+      verificationStatus = latest.verificationStatus;
+    } else if (strategy === "mean") {
+      score = group.reduce((sum, row) => sum + Number(row.score), 0) / count;
+      ci95 = [
+        group.reduce((sum, row) => sum + Number(row.ciLow), 0) / count,
+        group.reduce((sum, row) => sum + Number(row.ciHigh), 0) / count
+      ];
+      rankMetric = group.reduce((sum, row) => sum + metric(row), 0) / count;
+      const hasDisputed = group.some((row) => row.verificationStatus === "disputed");
+      const hasPending = group.some((row) => row.verificationStatus === "pending");
+      verificationStatus = hasDisputed ? "disputed" : hasPending ? "pending" : "verified";
+    }
+
+    return {
+      model,
+      score,
+      ci95,
+      verificationStatus,
+      metric: rankMetric
+    };
+  });
+
+  return aggregated
+    .sort((left, right) => (sort === "asc" ? left.metric - right.metric : right.metric - left.metric))
+    .slice(offset, offset + limit)
+    .map((row, index) => ({
+      rank: offset + index + 1,
+      model: row.model,
+      score: row.score,
+      ci95: row.ci95,
+      verificationStatus: row.verificationStatus
+    }));
+}
 
 function toDetail(row: {
   runId: string;
@@ -122,82 +203,35 @@ export function createDrizzleSubmissionStore(databaseUrl: string): SubmissionSto
       }
     },
 
-    async listLeaderboard(query: LeaderboardQuery): Promise<LeaderboardEntry[]> {
+    async listLeaderboard(query: ExtendedLeaderboardQuery): Promise<LeaderboardEntry[]> {
       await ensureSchema();
       const { limit, offset, sort, complexity, dimension } = parseLeaderboardQuery(query);
-
-      if (!dimension) {
-        const rows = await db.execute<{
-          model: string;
-          score: number;
-          ci_low: number;
-          ci_high: number;
-          verification_status: "pending" | "verified" | "disputed";
-        }>(sql`
-          SELECT DISTINCT ON (model) model, score, ci_low, ci_high, verification_status
-          FROM hub_submissions
-          ${complexity ? sql`WHERE complexity = ${complexity}` : sql``}
-          ORDER BY model, score DESC
-        `);
-
-        const sorted = rows
-          .slice()
-          .sort((left, right) => (sort === "asc" ? Number(left.score) - Number(right.score) : Number(right.score) - Number(left.score)))
-          .slice(offset, offset + limit);
-
-        return sorted.map((item, index) => ({
-          rank: offset + index + 1,
-          model: item.model,
-          score: Number(item.score),
-          ci95: [Number(item.ci_low), Number(item.ci_high)],
-          verificationStatus: item.verification_status
-        }));
-      }
-
+      const strategy = resolveLeaderboardStrategy((query as LeaderboardQuery & { strategy?: string }).strategy);
       const rows = await db.execute<{
         model: string;
-        complexity: string;
         score: number;
         ci_low: number;
         ci_high: number;
+        submitted_at: Date;
         dimension_scores: Record<string, number>;
         verification_status: "pending" | "verified" | "disputed";
       }>(sql`
-        SELECT model, complexity, score, ci_low, ci_high, dimension_scores, verification_status
+        SELECT model, score, ci_low, ci_high, submitted_at, dimension_scores, verification_status
         FROM hub_submissions
         ${complexity ? sql`WHERE complexity = ${complexity}` : sql``}
       `);
 
-      const metric = (row: {
-        score: number;
-        dimension_scores: Record<string, number>;
-      }): number => {
-        if (!dimension) {
-          return Number(row.score);
-        }
-        return Number(row.dimension_scores?.[dimension] ?? 0);
-      };
-
-      const bestByModel = new Map<string, (typeof rows)[number]>();
-      for (const row of rows) {
-        const previous = bestByModel.get(row.model);
-        if (!previous || metric(row) > metric(previous)) {
-          bestByModel.set(row.model, row);
-        }
-      }
-
-      const sorted = Array.from(bestByModel.values())
-        .slice()
-        .sort((left, right) => (sort === "asc" ? metric(left) - metric(right) : metric(right) - metric(left)))
-        .slice(offset, offset + limit);
-
-      return sorted.map((item, index) => ({
-        rank: offset + index + 1,
-        model: item.model,
-        score: Number(item.score),
-        ci95: [Number(item.ci_low), Number(item.ci_high)],
-        verificationStatus: item.verification_status
+      const normalizedRows: LeaderboardRow[] = rows.map((row) => ({
+        model: row.model,
+        score: Number(row.score),
+        ciLow: Number(row.ci_low),
+        ciHigh: Number(row.ci_high),
+        submittedAt: row.submitted_at,
+        dimensionScores: row.dimension_scores ?? {},
+        verificationStatus: row.verification_status
       }));
+
+      return aggregateLeaderboardRows(normalizedRows, sort, strategy, dimension, offset, limit);
     },
 
     async countSubmissionsForActorDay(actorId: string, dayIsoDate: string): Promise<number> {

@@ -51,6 +51,9 @@ export function HeaderNav({ topModels }: HeaderNavProps) {
       <a className={isActivePath(pathname, "/workbench") ? "hub-nav-link active" : "hub-nav-link"} href={navPath("/workbench", lang)}>
         {isEn ? "Workbench" : "工作台"}
       </a>
+      <a className={isActivePath(pathname, "/auth") ? "hub-nav-link active" : "hub-nav-link"} href={navPath("/auth", lang)}>
+        {isEn ? "Auth" : "登录"}
+      </a>
       <span className="hub-muted">{isEn ? "Models" : "模型"}</span>
       <div className="hub-model-links hub-desktop-only">
         {topModels.map((item) => (

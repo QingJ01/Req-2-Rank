@@ -19,7 +19,8 @@ export async function GET(request: Request): Promise<Response> {
     offset: url.searchParams.get("offset") ?? 0,
     sort: url.searchParams.get("sort") ?? "desc",
     complexity: url.searchParams.get("complexity") ?? undefined,
-    dimension: url.searchParams.get("dimension") ?? undefined
+    dimension: url.searchParams.get("dimension") ?? undefined,
+    strategy: url.searchParams.get("strategy") ?? undefined
   });
 
   return Response.json({ ok: true, status: 200, data: entries }, { status: 200 });

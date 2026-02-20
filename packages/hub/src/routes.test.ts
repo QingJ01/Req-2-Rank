@@ -183,6 +183,17 @@ describe("hub route skeletons", () => {
     }
     expect(leaderboard.data[0]?.model).toBe("openai/gpt-4o-mini");
     expect(leaderboard.data[0]?.score).toBe(90);
+
+    const mergedLeaderboard = await leaderboardHandler({
+      actorId: "user-1",
+      authToken: "token-1",
+      body: { limit: 5, offset: 0, sort: "desc" }
+    });
+    expect(mergedLeaderboard.ok).toBe(true);
+    if (!mergedLeaderboard.ok) {
+      throw new Error("expected merged leaderboard success");
+    }
+    expect(mergedLeaderboard.data[0]?.score).toBe(87.5);
   });
 
   it("supports dimension sorting", async () => {
@@ -275,6 +286,69 @@ describe("hub route skeletons", () => {
       throw new Error("expected leaderboard success");
     }
     expect(leaderboard.data[0]?.model).toBe("anthropic/claude-sonnet");
+  });
+
+  it("supports configurable aggregation strategies", async () => {
+    const store = createSubmissionStore();
+    const validate = createAuthValidator("token-1");
+    const nonceHandler = createNonceHandler(validate, store);
+    const submitHandler = createSubmitHandler(validate, store);
+    const leaderboardHandler = createLeaderboardHandler(validate, store);
+
+    const nonce1 = await nonceHandler({ actorId: "user-1", authToken: "token-1", body: { userId: "user-1" } });
+    const nonce2 = await nonceHandler({ actorId: "user-1", authToken: "token-1", body: { userId: "user-1" } });
+    if (!nonce1.ok || !nonce2.ok) {
+      throw new Error("expected nonce success");
+    }
+
+    await submitHandler({
+      actorId: "user-1",
+      authToken: "token-1",
+      body: {
+        runId: "run-strategy-1",
+        nonce: nonce1.data.nonce,
+        targetProvider: "openai",
+        targetModel: "gpt-4o-mini",
+        overallScore: 70,
+        submittedAt: new Date("2026-01-01T00:00:00.000Z").toISOString(),
+        evidenceChain: {
+          timeline: [{ phase: "generate", startedAt: "2026-01-01T00:00:00.000Z", completedAt: "2026-01-01T00:00:01.000Z", model: "system" }],
+          samples: [{ roundIndex: 0, requirement: "demo", codeSubmission: "ok" }],
+          environment: { os: "win32", nodeVersion: "v22", timezone: "UTC" }
+        }
+      }
+    });
+
+    await submitHandler({
+      actorId: "user-1",
+      authToken: "token-1",
+      body: {
+        runId: "run-strategy-2",
+        nonce: nonce2.data.nonce,
+        targetProvider: "openai",
+        targetModel: "gpt-4o-mini",
+        overallScore: 95,
+        submittedAt: new Date("2026-01-02T00:00:00.000Z").toISOString(),
+        evidenceChain: {
+          timeline: [{ phase: "generate", startedAt: "2026-01-02T00:00:00.000Z", completedAt: "2026-01-02T00:00:01.000Z", model: "system" }],
+          samples: [{ roundIndex: 0, requirement: "demo", codeSubmission: "ok" }],
+          environment: { os: "win32", nodeVersion: "v22", timezone: "UTC" }
+        }
+      }
+    });
+
+    const mean = await leaderboardHandler({ actorId: "user-1", authToken: "token-1", body: { limit: 5, offset: 0, strategy: "mean" } });
+    const best = await leaderboardHandler({ actorId: "user-1", authToken: "token-1", body: { limit: 5, offset: 0, strategy: "best" } });
+    const latest = await leaderboardHandler({ actorId: "user-1", authToken: "token-1", body: { limit: 5, offset: 0, strategy: "latest" } });
+
+    expect(mean.ok && best.ok && latest.ok).toBe(true);
+    if (!mean.ok || !best.ok || !latest.ok) {
+      throw new Error("expected strategy success");
+    }
+
+    expect(mean.data[0]?.score).toBe(82.5);
+    expect(best.data[0]?.score).toBe(95);
+    expect(latest.data[0]?.score).toBe(95);
   });
 
   it("rejects submission when timeline phases are out of order", async () => {

@@ -5,6 +5,7 @@ import LeaderboardPage from "./page.js";
 import ModelPage from "./model/[id]/page.js";
 import SubmissionPage from "./submission/[id]/page.js";
 import WorkbenchPage from "./workbench/page.js";
+import AuthPage from "./auth/page.js";
 import { appStore } from "./state.js";
 
 describe("next-style pages", () => {
@@ -63,9 +64,14 @@ describe("next-style pages", () => {
 
     const leaderboardEnHtml = renderToStaticMarkup(await LeaderboardPage({ searchParams: { lang: "en" } }));
     expect(leaderboardEnHtml).toContain("Leaderboard");
+    expect(leaderboardEnHtml).toContain("Aggregation");
 
     const workbenchEnHtml = renderToStaticMarkup(WorkbenchPage({ searchParams: { lang: "en" } }));
     expect(workbenchEnHtml).toContain("Workbench");
     expect(workbenchEnHtml).toContain("Realtime monitoring");
+
+    const authHtml = renderToStaticMarkup(AuthPage({ searchParams: { lang: "zh" } }));
+    expect(authHtml).toContain("登录管理");
+    expect(authHtml).toContain("使用 GitHub 登录");
   });
 });
