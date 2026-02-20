@@ -108,7 +108,7 @@ export interface PipelineRunInput {
   sandbox?: {
     enabled: boolean;
     strict?: boolean;
-    runner: (code: string, context: { roundIndex: number; requirementTitle: string }) => Promise<void>;
+    runner: (code: string, context: { roundIndex: number; requirementTitle: string; language: string }) => Promise<void>;
   };
   checkpoint?: {
     key: string;
@@ -390,7 +390,11 @@ export class PipelineOrchestrator {
 
           if (input.sandbox?.enabled) {
             try {
-              await input.sandbox.runner(codeSubmission, { roundIndex: index, requirementTitle });
+              await input.sandbox.runner(codeSubmission, {
+                roundIndex: index,
+                requirementTitle,
+                language: execution.language
+              });
             } catch (sandboxError) {
               const error = new Error(sandboxError instanceof Error ? sandboxError.message : String(sandboxError));
               error.name = "SandboxValidationError";

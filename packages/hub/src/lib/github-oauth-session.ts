@@ -16,9 +16,16 @@ const activeSessions = new Map<string, ActiveGithubOAuthSession>();
 
 let sqlClient: Sql | undefined;
 
+function isStrictPersistenceRequired(): boolean {
+  return process.env.R2R_OAUTH_STRICT_PERSISTENCE === "true" || process.env.NODE_ENV === "production";
+}
+
 function getClient(): Sql | undefined {
   const databaseUrl = process.env.R2R_DATABASE_URL;
   if (!databaseUrl) {
+    if (isStrictPersistenceRequired()) {
+      throw new Error("R2R_DATABASE_URL is required for OAuth session persistence");
+    }
     return undefined;
   }
 

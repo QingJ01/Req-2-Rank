@@ -2,12 +2,21 @@ name: Release Packages
 
 on:
   workflow_dispatch:
+    inputs:
+      publish:
+        description: "Publish to npm"
+        required: true
+        default: "true"
+      rollbackVersion:
+        description: "Optional rollback version for dist-tag latest"
+        required: false
+        default: ""
   push:
     tags:
       - "v*"
 
 jobs:
-  publish:
+  verify:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -22,9 +31,45 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm test
-      - run: pnpm --filter @req2rank/core publish --access public --no-git-checks
+
+  publish:
+    if: ${{ github.event_name == 'push' || github.event.inputs.publish == 'true' }}
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: https://registry.npmjs.org
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @req2rank/core publish --access public --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-      - run: pnpm --filter @req2rank/cli publish --access public --no-git-checks
+      - run: pnpm --filter @req2rank/cli publish --access public --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  rollback-latest:
+    if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.rollbackVersion != '' }}
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: https://registry.npmjs.org
+      - name: Rollback latest dist-tag
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          ROLLBACK_VERSION: ${{ github.event.inputs.rollbackVersion }}
+        run: |
+          npm dist-tag add @req2rank/core@${ROLLBACK_VERSION} latest
+          npm dist-tag add @req2rank/cli@${ROLLBACK_VERSION} latest

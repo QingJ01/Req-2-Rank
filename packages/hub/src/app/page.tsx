@@ -12,6 +12,7 @@ function statusBadgeColor(status: string | undefined): string {
 
 export default async function LeaderboardPage() {
   const entries = await appStore.listLeaderboard({ limit: 30, offset: 0, sort: "desc" });
+  const calibrations = await appStore.listCalibrations(5);
 
   return (
     <section>
@@ -45,6 +46,40 @@ export default async function LeaderboardPage() {
                 </td>
               </tr>
             ))}
+          </tbody>
+        </table>
+      </div>
+
+      <h2 style={{ marginTop: 20 }}>Calibration Recommendations</h2>
+      <div className="hub-card" style={{ overflow: "hidden" }}>
+        <table className="hub-table">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Recommended</th>
+              <th>Average Score</th>
+              <th>Sample Size</th>
+              <th>Reason</th>
+            </tr>
+          </thead>
+          <tbody>
+            {calibrations.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="hub-muted">
+                  No calibration snapshots yet.
+                </td>
+              </tr>
+            ) : (
+              calibrations.map((item) => (
+                <tr key={item.id}>
+                  <td>{item.createdAt}</td>
+                  <td>{item.recommendedComplexity}</td>
+                  <td>{item.averageScore.toFixed(1)}</td>
+                  <td>{item.sampleSize}</td>
+                  <td>{item.reason}</td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>

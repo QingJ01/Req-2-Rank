@@ -1,10 +1,13 @@
 {
   "name": "@req2rank/cli",
   "version": "0.1.0",
-  "private": true,
+  "private": false,
   "type": "module",
   "bin": {
     "req2rank": "dist/index.js"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
     "prebuild": "pnpm --filter @req2rank/core build",

@@ -31,6 +31,7 @@ import {
   parseLeaderboardQuery,
   Req2RankConfig,
   runSandboxedCommand,
+  runSandboxedSubmission,
   defaultConfig,
   req2rankConfigSchema
 } from "@req2rank/core";
@@ -418,17 +419,20 @@ export function createCliApp(options: CliAppOptions = {}) {
                   ? {
                       enabled: true,
                       strict: env.R2R_SANDBOX_STRICT !== "false",
-                      runner: async () => {
-                        await runSandboxedCommand({
-                          timeoutMs: env.R2R_SANDBOX_TIMEOUT_MS ? Number(env.R2R_SANDBOX_TIMEOUT_MS) : 60_000,
-                          cpus: env.R2R_SANDBOX_CPUS ? Number(env.R2R_SANDBOX_CPUS) : 1,
-                          memoryMb: env.R2R_SANDBOX_MEMORY_MB ? Number(env.R2R_SANDBOX_MEMORY_MB) : 512,
-                          pidsLimit: env.R2R_SANDBOX_PIDS_LIMIT ? Number(env.R2R_SANDBOX_PIDS_LIMIT) : 128,
-                          network: "none",
-                          readOnly: true
-                        });
-                      }
-                    }
+                       runner: async (code, context) => {
+                         const result = await runSandboxedSubmission({
+                           code,
+                           language: context.language,
+                           timeoutMs: env.R2R_SANDBOX_TIMEOUT_MS ? Number(env.R2R_SANDBOX_TIMEOUT_MS) : 60_000,
+                           image: env.R2R_SANDBOX_IMAGE
+                         });
+                         if (!result.passed) {
+                           throw new Error(
+                             `sandbox round ${context.roundIndex + 1} failed: ${result.stderr || result.stdout || "unknown"}`
+                           );
+                         }
+                       }
+                     }
                   : undefined,
               onProgress: (event) => {
                 progress.updatedAt = new Date().toISOString();

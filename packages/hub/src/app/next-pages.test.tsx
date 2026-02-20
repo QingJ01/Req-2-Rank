@@ -40,6 +40,7 @@ describe("next-style pages", () => {
   it("renders leaderboard, model and submission pages", async () => {
     const leaderboardHtml = renderToStaticMarkup(await LeaderboardPage());
     expect(leaderboardHtml).toContain("Leaderboard");
+    expect(leaderboardHtml).toContain("Calibration Recommendations");
 
     const modelHtml = renderToStaticMarkup(await ModelPage({ params: { id: "openai%2Fgpt-4o-mini" } }));
     expect(modelHtml).toContain("Model Detail");

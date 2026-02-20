@@ -11,4 +11,11 @@ describe("buildDockerSandboxCommand", () => {
     expect(args).toContain("pnpm");
     expect(args).toContain("test");
   });
+
+  it("uses explicit workspacePath when provided", () => {
+    const args = buildDockerSandboxCommand({ workspacePath: "/tmp/demo-workspace", command: ["node", "--version"] });
+    expect(args).toContain("/tmp/demo-workspace:/workspace");
+    expect(args).toContain("node");
+    expect(args).toContain("--version");
+  });
 });
