@@ -8,6 +8,7 @@ export default defineConfig({
       { text: "快速开始", link: "/getting-started" },
       { text: "命令总览", link: "/guide" },
       { text: "配置说明", link: "/configuration" },
+      { text: "项目设计", link: "/design" },
       { text: "Hub", link: "https://req2rank.top", target: "_blank", rel: "noreferrer" }
     ],
     sidebar: [
@@ -20,9 +21,11 @@ export default defineConfig({
           { text: "API 参考", link: "/api" },
           { text: "评分方法", link: "/scoring-methodology" },
           { text: "Hub 排行榜", link: "/hub" },
+          { text: "项目设计", link: "/design" },
           { text: "贡献指南", link: "/contributing" }
         ]
       }
     ]
   }
 });
+

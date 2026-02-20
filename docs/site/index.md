@@ -20,6 +20,7 @@ Req2Rank 通过动态需求生成、多模型陪审团评审和统计级置信�
 | [配置说明](/configuration) | `req2rank.config.json` 全字段参考 |
 | [评分方法](/scoring-methodology) | 5 维度评分、IJA 一致性与 CI95 置信区间详解 |
 | [Hub 排行榜](/hub) | 排行榜中枢的页面、提交流程与防作弊机制 |
+| [项目设计](/design) | 系统架构、核心模块设计与开发路线图 |
 | [API 参考](/api) | Hub 全部接口的请求/响应格式与认证方式 |
 | [贡献指南](/contributing) | 开发环境搭建、代码规范与 PR 流程 |
 
