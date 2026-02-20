@@ -95,6 +95,12 @@ importers:
         specifier: ^2.1.8
         version: 2.1.9(@types/node@22.19.11)
 
+  packages/req2rank:
+    dependencies:
+      '@req2rank/cli':
+        specifier: ^0.1.0
+        version: 0.1.0
+
 packages:
 
   '@algolia/abtesting@1.15.0':
@@ -849,6 +855,13 @@ packages:
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [win32]
+
+  '@req2rank/cli@0.1.0':
+    resolution: {integrity: sha512-jWMlSdfhmooN/shhyRJDPQt/YBca0oXfRQKtnW5kDmtrWIpXjgjDYJIJMhCds79zJ6zfEgXXj8c7D/1CBhC9Lw==}
+    hasBin: true
+
+  '@req2rank/core@0.1.0':
+    resolution: {integrity: sha512-We8CBlEnNn4AQfkhIzWoKmPCm7FMst6e0UkI0gD/fUIxI1j7ZKIfVdMSKoi6IyvrhhKOxbSESqSnmo/jX8Ws6A==}
 
   '@rollup/rollup-android-arm-eabi@4.57.1':
     resolution: {integrity: sha512-A6ehUVSiSaaliTxai040ZpZ2zTevHYbvu/lDoeAteHI8QnaosIzm4qwtezfRg1jOYaUmnzLX1AOD6Z+UJjtifg==}
@@ -2381,6 +2394,16 @@ snapshots:
 
   '@next/swc-win32-x64-msvc@16.1.6':
     optional: true
+
+  '@req2rank/cli@0.1.0':
+    dependencies:
+      '@req2rank/core': 0.1.0
+      commander: 13.1.0
+
+  '@req2rank/core@0.1.0':
+    dependencies:
+      better-sqlite3: 11.10.0
+      zod: 3.25.76
 
   '@rollup/rollup-android-arm-eabi@4.57.1':
     optional: true
