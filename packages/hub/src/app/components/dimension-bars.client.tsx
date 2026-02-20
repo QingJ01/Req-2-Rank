@@ -1,15 +1,18 @@
 "use client";
 
-import { DIMENSIONS, safeScore } from "./viz-utils.js";
+import type { Lang } from "../i18n.js";
+import { getDimensions, safeScore } from "./viz-utils.js";
 
 type DimensionBarsProps = {
   values: Record<string, number>;
+  lang?: Lang;
 };
 
-export function DimensionBars({ values }: DimensionBarsProps) {
+export function DimensionBars({ values, lang = "zh" }: DimensionBarsProps) {
+  const dimensions = getDimensions(lang);
   return (
     <div className="hub-viz-dimension-list">
-      {DIMENSIONS.map((dim) => {
+      {dimensions.map((dim) => {
         const value = safeScore(values[dim.key]);
         return (
           <div key={dim.key} className="hub-viz-dimension-row">

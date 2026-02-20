@@ -11,6 +11,11 @@
 
 - `GET /api/public/leaderboard`
 - `GET /api/public/model/:id`
+- `GET /api/public/live/stream`
+
+## Hub 内部代理接口
+
+- `GET /api/live/stream`（Workbench 使用，服务端代理并自动附带 `R2R_PUBLIC_API_KEY`）
 
 ## 需要鉴权的 Hub 接口
 
@@ -22,6 +27,8 @@
 - `POST /api/flag`
 - `GET /api/reports`
 - `POST /api/reverification/process`
+- `GET /api/admin/reports`（管理员）
+- `POST /api/admin/reports/resolve`（管理员）
 
 ## Hub 页面入口
 
@@ -60,3 +67,9 @@
 
 - Vercel 中的 `R2R_GITHUB_REDIRECT_URI` 必须与 GitHub OAuth Callback URL 完全一致。
 - 若回调地址变更，更新环境变量后需要重新部署。
+
+## 管理员权限
+
+- 管理后台与管理员 API 依赖 GitHub OAuth Session（`r2r_session`）。
+- 默认管理员 GitHub 账号为 `QingJ01`。
+- 可通过环境变量 `R2R_ADMIN_GITHUB_LOGIN` 覆盖默认管理员账号。

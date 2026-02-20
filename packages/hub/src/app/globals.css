@@ -45,9 +45,81 @@ body {
   font-size: 14px;
 }
 
+.hub-model-links {
+  display: inline-flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.hub-mobile-only {
+  display: none;
+}
+
+.hub-model-more {
+  position: relative;
+}
+
+.hub-model-more-summary {
+  list-style: none;
+  cursor: pointer;
+  border: 1px solid rgba(31, 36, 48, 0.2);
+  border-radius: 999px;
+  padding: 1px 10px;
+}
+
+.hub-model-more-summary.active {
+  border-color: #1d6b83;
+  background: rgba(29, 107, 131, 0.12);
+  color: #124f63;
+  font-weight: 700;
+}
+
+.hub-model-more-summary::-webkit-details-marker {
+  display: none;
+}
+
+.hub-model-more-list {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 20;
+  min-width: 160px;
+  display: grid;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid rgba(31, 36, 48, 0.16);
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: var(--shadow);
+}
+
 .hub-nav a {
   color: var(--text);
   text-decoration: none;
+}
+
+.hub-nav-link {
+  padding-bottom: 2px;
+  border-bottom: 2px solid transparent;
+}
+
+.hub-nav-link.active {
+  border-bottom-color: #1d6b83;
+  color: #124f63;
+  font-weight: 700;
+}
+
+.hub-nav-lang {
+  border: 1px solid rgba(31, 36, 48, 0.2);
+  border-radius: 999px;
+  padding: 2px 10px;
+}
+
+.hub-nav-lang.active {
+  border-color: #1d6b83;
+  background: rgba(29, 107, 131, 0.12);
+  color: #124f63;
+  font-weight: 700;
 }
 
 .hub-main {
@@ -310,7 +382,49 @@ body {
 }
 
 @media (max-width: 960px) {
+  .hub-header {
+    padding: 14px 16px;
+  }
+
+  .hub-header-inner {
+    align-items: flex-start;
+    gap: 10px;
+    flex-direction: column;
+  }
+
+  .hub-nav {
+    gap: 10px;
+    flex-wrap: wrap;
+    line-height: 1.6;
+  }
+
+  .hub-desktop-only {
+    display: none;
+  }
+
+  .hub-mobile-only {
+    display: inline-flex;
+  }
+
+  .hub-main {
+    padding: 18px 14px;
+  }
+
   .hub-viz-dimension-row {
     grid-template-columns: 90px 1fr 48px;
+  }
+}
+
+@media (max-width: 640px) {
+  .hub-nav {
+    font-size: 13px;
+  }
+
+  .hub-nav-link {
+    padding-bottom: 1px;
+  }
+
+  .hub-nav-lang {
+    padding: 1px 8px;
   }
 }

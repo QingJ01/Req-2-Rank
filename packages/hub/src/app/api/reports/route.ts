@@ -9,10 +9,10 @@ export async function POST(request: Request): Promise<Response> {
     );
   }
 
-  const report = submitCommunityReport({ runId: payload.runId, reason: payload.reason, details: payload.details });
+  const report = await submitCommunityReport({ runId: payload.runId, reason: payload.reason, details: payload.details });
   return Response.json({ ok: true, status: 200, data: report }, { status: 200 });
 }
 
 export async function GET(): Promise<Response> {
-  return Response.json({ ok: true, status: 200, data: listCommunityReports() }, { status: 200 });
+  return Response.json({ ok: true, status: 200, data: await listCommunityReports() }, { status: 200 });
 }

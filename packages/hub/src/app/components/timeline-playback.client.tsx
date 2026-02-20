@@ -1,13 +1,15 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import type { Lang } from "../i18n.js";
 import type { SubmissionDetailView } from "./viz-types.js";
 
 type TimelinePlaybackProps = {
   submission: SubmissionDetailView;
+  lang?: Lang;
 };
 
-export function TimelinePlayback({ submission }: TimelinePlaybackProps) {
+export function TimelinePlayback({ submission, lang = "zh" }: TimelinePlaybackProps) {
   const [playbackMs, setPlaybackMs] = useState<number | null>(null);
   const timeline = submission.evidenceChain?.timeline ?? [];
 
@@ -43,16 +45,26 @@ export function TimelinePlayback({ submission }: TimelinePlaybackProps) {
 
   const phaseBase = timeline.length > 0 ? new Date(timeline[0].startedAt).getTime() : 0;
 
+  function phaseLabel(phase: "generate" | "execute" | "evaluate" | "score"): string {
+    if (lang === "en") {
+      return phase;
+    }
+    if (phase === "generate") return "生成";
+    if (phase === "execute") return "执行";
+    if (phase === "evaluate") return "评估";
+    return "评分";
+  }
+
   return (
     <section className="hub-card" style={{ padding: 14 }}>
       <div className="hub-viz-panel-head">
-        <h3>Evaluation Playback</h3>
+        <h3>{lang === "en" ? "Evaluation Playback" : "评测回放"}</h3>
         <button className="hub-viz-button" onClick={() => setPlaybackMs(0)}>
-          Replay Timeline
+          {lang === "en" ? "Replay" : "重新播放"}
         </button>
       </div>
       {timeline.length === 0 ? (
-        <p className="hub-muted">No timeline data available.</p>
+        <p className="hub-muted">{lang === "en" ? "No timeline data available." : "暂无时间线数据。"}</p>
       ) : (
         <ul className="hub-viz-timeline-list">
           {timeline.map((phase) => {
@@ -64,7 +76,7 @@ export function TimelinePlayback({ submission }: TimelinePlaybackProps) {
 
             return (
               <li key={`${phase.phase}-${phase.startedAt}`} className={className}>
-                <div className="hub-viz-phase-title">{phase.phase}</div>
+                <div className="hub-viz-phase-title">{phaseLabel(phase.phase)}</div>
                 <div className="hub-viz-phase-meta">{phase.model}</div>
                 <div className="hub-viz-phase-time">
                   {new Date(phase.startedAt).toLocaleTimeString()} - {new Date(phase.completedAt).toLocaleTimeString()}

@@ -2,12 +2,14 @@
 
 import type { SubmissionDetailView } from "./viz-types.js";
 import { safeScore } from "./viz-utils.js";
+import type { Lang } from "../i18n.js";
 
 type CiChartProps = {
   submissions: SubmissionDetailView[];
+  lang?: Lang;
 };
 
-export function CiChart({ submissions }: CiChartProps) {
+export function CiChart({ submissions, lang = "zh" }: CiChartProps) {
   const width = 600;
   const height = 220;
   const left = 48;
@@ -21,7 +23,11 @@ export function CiChart({ submissions }: CiChartProps) {
   const y = (score: number) => bottom - (safeScore(score) / 100) * spanY;
 
   return (
-    <svg viewBox={`0 0 ${width} ${height}`} className="hub-viz-ci" aria-label="confidence interval chart">
+    <svg
+      viewBox={`0 0 ${width} ${height}`}
+      className="hub-viz-ci"
+      aria-label={lang === "en" ? "confidence interval chart" : "置信区间图"}
+    >
       <line x1={left} y1={bottom} x2={right} y2={bottom} className="hub-viz-axis-line" />
       <line x1={left} y1={top} x2={left} y2={bottom} className="hub-viz-axis-line" />
       {[0, 25, 50, 75, 100].map((tick) => (

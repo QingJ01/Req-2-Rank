@@ -6,7 +6,7 @@ type MiniTrendProps = {
 
 export function MiniTrend({ points }: MiniTrendProps) {
   if (points.length === 0) {
-    return <span className="hub-muted">n/a</span>;
+    return <span className="hub-muted">暂无</span>;
   }
 
   const width = 120;

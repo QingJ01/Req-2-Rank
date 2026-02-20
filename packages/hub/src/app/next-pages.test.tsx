@@ -33,32 +33,39 @@ describe("next-style pages", () => {
     const html = renderToStaticMarkup(await RootLayout({ children: <div>child</div> }));
 
     expect(html).toContain("Req2Rank Hub");
-    expect(html).toContain("Workbench");
-    expect(html).toContain("Models");
+    expect(html).toContain("工作台");
+    expect(html).toContain("模型");
     expect(html).toContain("openai%2Fgpt-4o-mini");
     expect(html).toContain("child");
   });
 
   it("renders leaderboard, model and submission pages", async () => {
     const leaderboardHtml = renderToStaticMarkup(await LeaderboardPage());
-    expect(leaderboardHtml).toContain("Leaderboard");
-    expect(leaderboardHtml).toContain("Calibration Recommendations");
+    expect(leaderboardHtml).toContain("排行榜");
+    expect(leaderboardHtml).toContain("校准建议");
 
     const modelHtml = renderToStaticMarkup(await ModelPage({ params: { id: "openai%2Fgpt-4o-mini" } }));
-    expect(modelHtml).toContain("Model Detail");
+    expect(modelHtml).toContain("模型详情");
 
     const submissionHtml = renderToStaticMarkup(await SubmissionPage({ params: { id: "run-layout-1" } }));
-    expect(submissionHtml).toContain("Submission Detail");
-    expect(submissionHtml).toContain("Dimension Scores");
-    expect(submissionHtml).toContain("Evidence Chain");
-    expect(submissionHtml).toContain("Sample 0");
-    expect(submissionHtml).toContain("Requirement");
-    expect(submissionHtml).toContain("Code Submission");
-    expect(submissionHtml).toContain("Copy code");
+    expect(submissionHtml).toContain("提交详情");
+    expect(submissionHtml).toContain("维度得分");
+    expect(submissionHtml).toContain("证据链");
+    expect(submissionHtml).toContain("样本 0");
+    expect(submissionHtml).toContain("需求");
+    expect(submissionHtml).toContain("提交代码");
+    expect(submissionHtml).toContain("复制代码");
     expect(submissionHtml).toContain("language-ts");
 
     const workbenchHtml = renderToStaticMarkup(WorkbenchPage({ searchParams: {} }));
-    expect(workbenchHtml).toContain("Workbench");
-    expect(workbenchHtml).toContain("Realtime monitoring");
+    expect(workbenchHtml).toContain("实时工作台");
+    expect(workbenchHtml).toContain("实时监控");
+
+    const leaderboardEnHtml = renderToStaticMarkup(await LeaderboardPage({ searchParams: { lang: "en" } }));
+    expect(leaderboardEnHtml).toContain("Leaderboard");
+
+    const workbenchEnHtml = renderToStaticMarkup(WorkbenchPage({ searchParams: { lang: "en" } }));
+    expect(workbenchEnHtml).toContain("Workbench");
+    expect(workbenchEnHtml).toContain("Realtime monitoring");
   });
 });

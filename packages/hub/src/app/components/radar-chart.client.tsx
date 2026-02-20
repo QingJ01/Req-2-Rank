@@ -1,19 +1,22 @@
 "use client";
 
-import { DIMENSIONS, safeScore } from "./viz-utils.js";
+import type { Lang } from "../i18n.js";
+import { getDimensions, safeScore } from "./viz-utils.js";
 
 type RadarChartProps = {
   values: Record<string, number>;
+  lang?: Lang;
 };
 
-export function RadarChart({ values }: RadarChartProps) {
+export function RadarChart({ values, lang = "zh" }: RadarChartProps) {
+  const dimensions = getDimensions(lang);
   const size = 260;
   const center = size / 2;
   const radius = 92;
   const rings = [25, 50, 75, 100];
 
-  const points = DIMENSIONS.map((dim, index) => {
-    const angle = (Math.PI * 2 * index) / DIMENSIONS.length - Math.PI / 2;
+  const points = dimensions.map((dim, index) => {
+    const angle = (Math.PI * 2 * index) / dimensions.length - Math.PI / 2;
     const score = safeScore(values[dim.key]);
     return {
       label: dim.label,
@@ -30,10 +33,10 @@ export function RadarChart({ values }: RadarChartProps) {
     <svg viewBox={`0 0 ${size} ${size}`} className="hub-viz-radar" aria-label="dimension radar chart">
       {rings.map((ring) => (
         <polygon
-          key={ring}
-          points={points
-            .map((point, index) => {
-              const angle = (Math.PI * 2 * index) / DIMENSIONS.length - Math.PI / 2;
+              key={ring}
+              points={points
+                .map((point, index) => {
+                  const angle = (Math.PI * 2 * index) / dimensions.length - Math.PI / 2;
               const ringRadius = (radius * ring) / 100;
               const x = center + Math.cos(angle) * ringRadius;
               const y = center + Math.sin(angle) * ringRadius;

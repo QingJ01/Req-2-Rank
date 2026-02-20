@@ -1,4 +1,6 @@
 import type { ReactNode } from "react";
+import { HeaderNav } from "./header-nav.client.js";
+import { LangSync } from "./lang-sync.client.js";
 import { appStore } from "./state.js";
 import "./globals.css";
 
@@ -10,25 +12,15 @@ export default async function RootLayout({ children }: RootLayoutProps) {
   const topModels = await appStore.listLeaderboard({ limit: 3, offset: 0, sort: "desc" });
 
   return (
-    <html lang="en">
+    <html lang="zh-CN">
       <body>
         <header className="hub-header">
           <div className="hub-header-inner">
             <strong className="hub-brand">Req2Rank Hub</strong>
-            <nav className="hub-nav">
-              <a href="/">
-                Leaderboard
-              </a>
-              <a href="/workbench">Workbench</a>
-              <span className="hub-muted">Models</span>
-              {topModels.map((item) => (
-                <a key={item.model} href={`/model/${encodeURIComponent(item.model)}`}>
-                  {item.model.split("/")[1] ?? item.model}
-                </a>
-              ))}
-            </nav>
+            <HeaderNav topModels={topModels} />
           </div>
         </header>
+        <LangSync />
         <main className="hub-main">{children}</main>
       </body>
     </html>
