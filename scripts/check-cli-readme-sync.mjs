@@ -5,14 +5,18 @@ import { fileURLToPath } from "node:url";
 
 const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const readmePath = resolve(root, "README.md");
-const cliEntryPath = resolve(root, "packages/cli/dist/src/index.js");
+const cliEntryCandidates = [
+  resolve(root, "packages/cli/dist/src/index.js"),
+  resolve(root, "packages/cli/dist/index.js")
+];
+const cliEntryPath = cliEntryCandidates.find((path) => existsSync(path));
 
 if (!existsSync(readmePath)) {
   throw new Error("README.md not found");
 }
 
-if (!existsSync(cliEntryPath)) {
-  throw new Error("CLI build artifact not found: packages/cli/dist/src/index.js");
+if (!cliEntryPath) {
+  throw new Error("CLI build artifact not found: packages/cli/dist/src/index.js or packages/cli/dist/index.js");
 }
 
 const readme = readFileSync(readmePath, "utf-8");
