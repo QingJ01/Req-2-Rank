@@ -143,6 +143,14 @@ class FailingExecutionEngine extends ExecutionEngine {
   }
 }
 
+class TimeoutExecutionEngine extends ExecutionEngine {
+  override async execute(): Promise<ExecutionResult> {
+    const timeoutError = new Error("network timeout");
+    timeoutError.name = "TimeoutError";
+    throw timeoutError;
+  }
+}
+
 describe("PipelineOrchestrator stage handoff", () => {
   it("passes execute -> evaluate -> score and returns dimension scores", async () => {
     const execution = new FakeExecutionEngine();
@@ -168,6 +176,8 @@ describe("PipelineOrchestrator stage handoff", () => {
     expect(run.dimensionScores.logicAccuracy).toBe(90);
     expect(run.ci95[0]).toBe(87);
     expect(run.agreementLevel).toBe("high");
+    expect(run.evidenceChain?.samples[0]?.codeSubmission).toContain("ok");
+    expect(run.evidenceChain?.timeline).toHaveLength(4);
   });
 
   it("honors rounds configuration and aggregates multiple rounds", async () => {
@@ -242,5 +252,88 @@ describe("PipelineOrchestrator stage handoff", () => {
     expect(resumedRun.rounds).toBe(3);
     expect(resumedRun.overallScore).toBe(87);
     expect(await checkpointStore.load(checkpointKey)).toBeUndefined();
+  });
+
+  it("marks timeout rounds as zero score instead of crashing run", async () => {
+    const execution = new TimeoutExecutionEngine();
+    const evaluation = new FakeEvaluationPanel();
+    const scoring = new FakeScoringEngine();
+    const provider = new FakeProvider();
+    const providerFactory = () => provider;
+
+    const orchestrator = new PipelineOrchestrator(undefined, execution, evaluation, scoring, providerFactory);
+    const run = await orchestrator.run({
+      config: {
+        target: { provider: "openai", model: "gpt-4o-mini", apiKey: "k" },
+        systemModel: { provider: "openai", model: "gpt-4o-mini", apiKey: "k" },
+        judges: [{ provider: "openai", model: "gpt-4o", apiKey: "k", weight: 1 }],
+        test: { complexity: "C1", rounds: 1, concurrency: 1 }
+      }
+    });
+
+    expect(run.overallScore).toBe(0);
+    expect(run.dimensionScores.logicAccuracy).toBe(0);
+    expect(run.requirementTitle.toLowerCase()).toContain("failed");
+  });
+
+  it("marks sandbox validation failures as recoverable round failures", async () => {
+    const execution = new FakeExecutionEngine();
+    const evaluation = new FakeEvaluationPanel();
+    const scoring = new FakeScoringEngine();
+    const provider = new FakeProvider();
+    const providerFactory = () => provider;
+
+    const orchestrator = new PipelineOrchestrator(undefined, execution, evaluation, scoring, providerFactory);
+    const run = await orchestrator.run({
+      config: {
+        target: { provider: "openai", model: "gpt-4o-mini", apiKey: "k" },
+        systemModel: { provider: "openai", model: "gpt-4o-mini", apiKey: "k" },
+        judges: [{ provider: "openai", model: "gpt-4o", apiKey: "k", weight: 1 }],
+        test: { complexity: "C1", rounds: 1, concurrency: 1 }
+      },
+      sandbox: {
+        enabled: true,
+        strict: true,
+        runner: async () => {
+          throw new Error("sandbox rejected generated code");
+        }
+      }
+    });
+
+    expect(run.overallScore).toBe(0);
+    expect(run.requirementTitle.toLowerCase()).toContain("failed");
+  });
+
+  it("emits stage progress events during run", async () => {
+    const execution = new FakeExecutionEngine();
+    const evaluation = new FakeEvaluationPanel();
+    const scoring = new FakeScoringEngine();
+    const provider = new FakeProvider();
+    const providerFactory = () => provider;
+    const events: string[] = [];
+
+    const orchestrator = new PipelineOrchestrator(undefined, execution, evaluation, scoring, providerFactory);
+    await orchestrator.run({
+      config: {
+        target: { provider: "openai", model: "gpt-4o-mini", apiKey: "k" },
+        systemModel: { provider: "openai", model: "gpt-4o-mini", apiKey: "k" },
+        judges: [{ provider: "openai", model: "gpt-4o", apiKey: "k", weight: 1 }],
+        test: { complexity: "C1", rounds: 1, concurrency: 1 }
+      },
+      onProgress: (event) => {
+        events.push(`${event.phase}:${event.state}`);
+      }
+    });
+
+    expect(events).toEqual([
+      "generate:started",
+      "generate:completed",
+      "execute:started",
+      "execute:completed",
+      "evaluate:started",
+      "evaluate:completed",
+      "score:started",
+      "score:completed"
+    ]);
   });
 });

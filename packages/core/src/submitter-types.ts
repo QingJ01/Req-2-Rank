@@ -3,6 +3,7 @@ export interface SubmissionRequest {
   nonce: string;
   targetProvider: string;
   targetModel: string;
+  complexity?: "C1" | "C2" | "C3" | "C4" | "mixed";
   overallScore: number;
   ci95?: [number, number];
   agreementLevel?: "high" | "moderate" | "low";
@@ -33,6 +34,14 @@ export interface LeaderboardQuery {
   limit?: number | string;
   offset?: number | string;
   sort?: "asc" | "desc" | string;
+  complexity?: "C1" | "C2" | "C3" | "C4" | "mixed" | string;
+  dimension?:
+    | "functionalCompleteness"
+    | "codeQuality"
+    | "logicAccuracy"
+    | "security"
+    | "engineeringPractice"
+    | string;
 }
 
 export interface EvidenceChain {

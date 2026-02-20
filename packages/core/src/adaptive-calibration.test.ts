@@ -8,6 +8,7 @@ describe("calibrateComplexity", () => {
       { score: 92, complexity: "C2" }
     ]);
     expect(result.recommendedComplexity).toBe("C3");
+    expect(result.sampleSize).toBe(2);
   });
 
   it("lowers complexity for weak history", () => {

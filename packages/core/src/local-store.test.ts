@@ -34,7 +34,20 @@ describe("LocalStore", () => {
         engineeringPractice: 80
       },
       ci95: [78, 82],
-      agreementLevel: "high"
+      agreementLevel: "high",
+      ijaScore: 0.88,
+      evidenceChain: {
+        timeline: [
+          {
+            phase: "generate",
+            startedAt: "2026-01-01T00:00:00.000Z",
+            completedAt: "2026-01-01T00:00:01.000Z",
+            model: "system"
+          }
+        ],
+        samples: [{ roundIndex: 0, requirement: "demo", codeSubmission: "ok" }],
+        environment: { os: "win32", nodeVersion: "v22", timezone: "UTC" }
+      }
     });
 
     const content = await readFile(dbPath);
@@ -64,7 +77,8 @@ describe("LocalStore", () => {
         engineeringPractice: 80
       },
       ci95: [78, 82],
-      agreementLevel: "high"
+      agreementLevel: "high",
+      ijaScore: 0.75
     });
 
     await store.appendRun({
@@ -84,7 +98,8 @@ describe("LocalStore", () => {
         engineeringPractice: 88
       },
       ci95: [86, 90],
-      agreementLevel: "high"
+      agreementLevel: "high",
+      ijaScore: 0.92
     });
 
     const runs = await store.listRuns();
@@ -93,6 +108,19 @@ describe("LocalStore", () => {
 
     const found = await store.findRunById("run-1");
     expect(found?.targetProvider).toBe("openai");
+    expect(found?.ijaScore).toBe(0.75);
+
+    await store.appendCalibration({
+      id: "cal-1",
+      createdAt: new Date("2026-01-03T00:00:00.000Z").toISOString(),
+      recommendedComplexity: "C2",
+      reason: "Average score supports C2",
+      averageScore: 84,
+      sampleSize: 2
+    });
+    const calibrations = await store.listCalibrations();
+    expect(calibrations).toHaveLength(1);
+    expect(calibrations[0]?.recommendedComplexity).toBe("C2");
     store.close();
   });
 });

@@ -4,7 +4,11 @@ import { LeaderboardQuery } from "./submitter-types.js";
 export const leaderboardQuerySchema = z.object({
   limit: z.number().int().positive(),
   offset: z.number().int().nonnegative(),
-  sort: z.enum(["asc", "desc"])
+  sort: z.enum(["asc", "desc"]),
+  complexity: z.enum(["C1", "C2", "C3", "C4", "mixed"]).optional(),
+  dimension: z
+    .enum(["functionalCompleteness", "codeQuality", "logicAccuracy", "security", "engineeringPractice"])
+    .optional()
 });
 
 export type LeaderboardQueryNormalized = z.infer<typeof leaderboardQuerySchema>;
@@ -51,6 +55,8 @@ export function parseLeaderboardQuery(
   const limit = parseIntegerField(input.limit, 10, labels.limit);
   const offset = parseIntegerField(input.offset, 0, labels.offset);
   const sort = input.sort ?? "desc";
+  const complexity = input.complexity;
+  const dimension = input.dimension;
 
   if (limit <= 0) {
     throw new Error(`${labels.limit} must be a positive integer`);
@@ -63,5 +69,20 @@ export function parseLeaderboardQuery(
     throw new Error(`Invalid ${labels.sort} value: ${sort}`);
   }
 
-  return leaderboardQuerySchema.parse({ limit, offset, sort });
+  if (complexity !== undefined && complexity !== "C1" && complexity !== "C2" && complexity !== "C3" && complexity !== "C4" && complexity !== "mixed") {
+    throw new Error(`Invalid complexity value: ${complexity}`);
+  }
+
+  if (
+    dimension !== undefined &&
+    dimension !== "functionalCompleteness" &&
+    dimension !== "codeQuality" &&
+    dimension !== "logicAccuracy" &&
+    dimension !== "security" &&
+    dimension !== "engineeringPractice"
+  ) {
+    throw new Error(`Invalid dimension value: ${dimension}`);
+  }
+
+  return leaderboardQuerySchema.parse({ limit, offset, sort, complexity, dimension });
 }

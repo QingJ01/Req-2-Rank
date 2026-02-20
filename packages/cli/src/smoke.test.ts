@@ -24,7 +24,8 @@ describe("cli smoke scenarios", () => {
             status: "accepted",
             message: `Submitted ${payload.runId}`
           }),
-          getLeaderboard: async () => [{ rank: 1, model: "openai/gpt-4o-mini", score: 91.2 }]
+          getLeaderboard: async () => [{ rank: 1, model: "openai/gpt-4o-mini", score: 91.2 }],
+          submitCalibration: async () => ({ ok: true })
         }
       });
 

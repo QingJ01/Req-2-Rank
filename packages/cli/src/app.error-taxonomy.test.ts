@@ -58,7 +58,8 @@ describe("cli error taxonomy", () => {
           submit: async () => {
             throw new Error("Hub unavailable");
           },
-          getLeaderboard: async () => []
+          getLeaderboard: async () => [],
+          submitCalibration: async () => ({ ok: true })
         }
       });
 

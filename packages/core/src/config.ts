@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { Complexity } from "./types.js";
+import { EvidenceChain } from "./submitter-types.js";
 
 const complexitySchema = z.union([
   z.literal("C1"),
@@ -58,10 +59,21 @@ export interface RunRecord {
   ci95: [number, number];
   agreementLevel: "high" | "moderate" | "low";
   ijaScore?: number;
+  evidenceChain?: EvidenceChain;
 }
 
 export interface LocalStoreShape {
   runs: RunRecord[];
+  calibrations?: CalibrationSnapshot[];
+}
+
+export interface CalibrationSnapshot {
+  id: string;
+  createdAt: string;
+  recommendedComplexity: Complexity;
+  reason: string;
+  averageScore: number;
+  sampleSize: number;
 }
 
 export const defaultConfig: Req2RankConfig = {

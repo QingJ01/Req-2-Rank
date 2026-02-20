@@ -91,6 +91,9 @@ describe("CLI app", () => {
         },
         async getLeaderboard() {
           return [];
+        },
+        async submitCalibration() {
+          return { ok: true };
         }
       }
     });
@@ -337,6 +340,10 @@ describe("CLI app", () => {
             { rank: 1, model: "openai/gpt-4o-mini", score: 91.2 },
             { rank: 2, model: "anthropic/claude-sonnet-4-20250514", score: 89.4 }
           ];
+        },
+        async submitCalibration() {
+          events.push("calibration");
+          return { ok: true };
         }
       }
     });
@@ -377,6 +384,9 @@ describe("CLI app", () => {
         async getLeaderboard(query) {
           calls.push(`${query.limit}:${query.offset}:${query.sort}`);
           return [{ rank: 1, model: "m", score: 1 }];
+        },
+        async submitCalibration() {
+          return { ok: true };
         }
       }
     });

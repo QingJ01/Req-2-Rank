@@ -8,6 +8,8 @@ export interface CalibrationInput {
 export interface CalibrationResult {
   recommendedComplexity: Complexity;
   reason: string;
+  averageScore: number;
+  sampleSize: number;
 }
 
 const ORDER: Complexity[] = ["C1", "C2", "C3", "C4"];
@@ -16,7 +18,9 @@ export function calibrateComplexity(history: CalibrationInput[]): CalibrationRes
   if (history.length === 0) {
     return {
       recommendedComplexity: "C2",
-      reason: "No historical data; start from C2 baseline."
+      reason: "No historical data; start from C2 baseline.",
+      averageScore: 0,
+      sampleSize: 0
     };
   }
 
@@ -28,7 +32,9 @@ export function calibrateComplexity(history: CalibrationInput[]): CalibrationRes
     const next = ORDER[latestIndex + 1];
     return {
       recommendedComplexity: next,
-      reason: `Average score ${avg.toFixed(1)} is high; increase to ${next}.`
+      reason: `Average score ${avg.toFixed(1)} is high; increase to ${next}.`,
+      averageScore: avg,
+      sampleSize: history.length
     };
   }
 
@@ -36,12 +42,16 @@ export function calibrateComplexity(history: CalibrationInput[]): CalibrationRes
     const previous = ORDER[latestIndex - 1];
     return {
       recommendedComplexity: previous,
-      reason: `Average score ${avg.toFixed(1)} is low; reduce to ${previous}.`
+      reason: `Average score ${avg.toFixed(1)} is low; reduce to ${previous}.`,
+      averageScore: avg,
+      sampleSize: history.length
     };
   }
 
   return {
     recommendedComplexity: latest,
-    reason: `Average score ${avg.toFixed(1)} supports keeping ${latest}.`
+    reason: `Average score ${avg.toFixed(1)} supports keeping ${latest}.`,
+    averageScore: avg,
+    sampleSize: history.length
   };
 }

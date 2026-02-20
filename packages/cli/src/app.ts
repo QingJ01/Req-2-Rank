@@ -16,6 +16,7 @@ import {
 } from "./formatters.js";
 import { parseOutputMode, resolveReportOutputMode } from "./output-mode.js";
 import {
+  CalibrationSnapshot,
   LocalStore,
   PipelineOrchestrator,
   HubClient,
@@ -37,6 +38,7 @@ import {
 const CONFIG_FILENAME = "req2rank.config.json";
 const STORE_FILENAME = ".req2rank/runs.db";
 const CHECKPOINT_FILENAME = ".req2rank/checkpoints.json";
+const LIVE_PROGRESS_FILENAME = ".req2rank/live-progress.json";
 
 export interface CliAppOptions {
   cwd?: string;
@@ -294,6 +296,30 @@ export function createCliApp(options: CliAppOptions = {}) {
   const injectedHubClient = options.hubClient;
   const store = new LocalStore(join(cwd, STORE_FILENAME));
   const checkpointStore = new FileCheckpointStore(join(cwd, CHECKPOINT_FILENAME));
+  const progressFilePath = join(cwd, LIVE_PROGRESS_FILENAME);
+
+  type LiveProgressEvent = {
+    timestamp: string;
+    roundIndex: number;
+    totalRounds: number;
+    phase: "generate" | "execute" | "evaluate" | "score";
+    state: "started" | "completed" | "failed";
+    message?: string;
+  };
+
+  type LiveProgressSnapshot = {
+    status: "idle" | "running" | "completed" | "failed";
+    updatedAt: string;
+    runId?: string;
+    model?: string;
+    error?: string;
+    events: LiveProgressEvent[];
+  };
+
+  async function writeLiveProgress(snapshot: LiveProgressSnapshot): Promise<void> {
+    await mkdir(dirname(progressFilePath), { recursive: true });
+    await writeFile(progressFilePath, JSON.stringify(snapshot, null, 2), "utf-8");
+  }
 
   function shouldUseStubProviders(config: Req2RankConfig): boolean {
     if (!config.target.apiKey || !config.systemModel.apiKey) {
@@ -371,13 +397,67 @@ export function createCliApp(options: CliAppOptions = {}) {
           const envConfig = applyEnvOverrides(await readConfig(cwd), env);
           const config = applyRunOverrides(envConfig, options);
           const pipeline = createRuntimePipeline(config);
-          const runRecord = await pipeline.run({
-            config,
-            checkpoint: {
-              key: createPipelineCheckpointKey("run", config),
-              store: checkpointStore
-            }
-          });
+          const progress: LiveProgressSnapshot = {
+            status: "running",
+            updatedAt: new Date().toISOString(),
+            model: `${config.target.provider}/${config.target.model}`,
+            events: []
+          };
+          let writeQueue = Promise.resolve();
+          const persist = (): void => {
+            writeQueue = writeQueue.then(() => writeLiveProgress(progress));
+          };
+          persist();
+
+          let runRecord;
+          try {
+            runRecord = await pipeline.run({
+              config,
+              sandbox:
+                env.R2R_SANDBOX_ENABLED === "true"
+                  ? {
+                      enabled: true,
+                      strict: env.R2R_SANDBOX_STRICT !== "false",
+                      runner: async () => {
+                        await runSandboxedCommand({
+                          timeoutMs: env.R2R_SANDBOX_TIMEOUT_MS ? Number(env.R2R_SANDBOX_TIMEOUT_MS) : 60_000,
+                          cpus: env.R2R_SANDBOX_CPUS ? Number(env.R2R_SANDBOX_CPUS) : 1,
+                          memoryMb: env.R2R_SANDBOX_MEMORY_MB ? Number(env.R2R_SANDBOX_MEMORY_MB) : 512,
+                          pidsLimit: env.R2R_SANDBOX_PIDS_LIMIT ? Number(env.R2R_SANDBOX_PIDS_LIMIT) : 128,
+                          network: "none",
+                          readOnly: true
+                        });
+                      }
+                    }
+                  : undefined,
+              onProgress: (event) => {
+                progress.updatedAt = new Date().toISOString();
+                progress.events.push(event);
+                if (progress.events.length > 120) {
+                  progress.events = progress.events.slice(-120);
+                }
+                persist();
+              },
+              checkpoint: {
+                key: createPipelineCheckpointKey("run", config),
+                store: checkpointStore
+              }
+            });
+          } catch (error) {
+            progress.status = "failed";
+            progress.updatedAt = new Date().toISOString();
+            progress.error = error instanceof Error ? error.message : String(error);
+            persist();
+            await writeQueue;
+            throw error;
+          }
+
+          progress.status = "completed";
+          progress.updatedAt = new Date().toISOString();
+          progress.runId = runRecord.id;
+          persist();
+          await writeQueue;
+
           await store.appendRun(runRecord);
           output = `Run completed: ${runRecord.id}`;
         });
@@ -619,6 +699,29 @@ export function createCliApp(options: CliAppOptions = {}) {
               complexity: (run.complexity === "mixed" ? "C2" : run.complexity) as "C1" | "C2" | "C3" | "C4"
             }));
           const recommendation = calibrateComplexity(history);
+
+          const snapshot: CalibrationSnapshot = {
+            id: `cal-${Date.now()}`,
+            createdAt: new Date().toISOString(),
+            recommendedComplexity: recommendation.recommendedComplexity,
+            reason: recommendation.reason,
+            averageScore: recommendation.averageScore,
+            sampleSize: recommendation.sampleSize
+          };
+          await store.appendCalibration(snapshot);
+
+          try {
+            const runtimeHubClient = await resolveHubClient();
+            await runtimeHubClient.submitCalibration({
+              recommendedComplexity: snapshot.recommendedComplexity,
+              reason: snapshot.reason,
+              averageScore: snapshot.averageScore,
+              sampleSize: snapshot.sampleSize,
+              source: "cli"
+            });
+          } catch {
+            // calibration sync is best-effort; local persistence is the source of truth
+          }
 
           if (options.write) {
             const config = await readConfig(cwd);

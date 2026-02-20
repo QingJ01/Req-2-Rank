@@ -1,5 +1,6 @@
 import { Complexity, ProjectRequirement } from "./types.js";
 import { LLMProvider } from "./providers/base.js";
+import { DOMAIN_NAMES, DOMAIN_TAXONOMY } from "./domain-taxonomy.js";
 
 export interface RequirementSeed {
   id: string;
@@ -149,6 +150,7 @@ interface StructuredRequirementDraft {
   functionalRequirements?: unknown;
   constraints?: unknown;
   expectedDeliverables?: unknown;
+  exampleIO?: unknown;
   evaluationGuidance?: unknown;
   selfReviewPassed?: unknown;
 }
@@ -208,7 +210,14 @@ function toProjectRequirementDraft(
   fallbackDescription: string
 ): Pick<
   ProjectRequirement,
-  "title" | "description" | "functionalRequirements" | "constraints" | "expectedDeliverables" | "evaluationGuidance" | "selfReviewPassed"
+  | "title"
+  | "description"
+  | "functionalRequirements"
+  | "constraints"
+  | "expectedDeliverables"
+  | "exampleIO"
+  | "evaluationGuidance"
+  | "selfReviewPassed"
 > {
   const functionalRequirements: ProjectRequirement["functionalRequirements"] = Array.isArray(parsed.functionalRequirements)
     ? parsed.functionalRequirements
@@ -249,6 +258,18 @@ function toProjectRequirementDraft(
     expectedDeliverables: Array.isArray(parsed.expectedDeliverables)
       ? parsed.expectedDeliverables.filter((item): item is string => typeof item === "string")
       : ["source code", "tests"],
+    exampleIO: Array.isArray(parsed.exampleIO)
+      ? parsed.exampleIO
+          .filter((item) => item && typeof item === "object")
+          .map((item) => {
+            const record = item as Record<string, unknown>;
+            return {
+              input: typeof record.input === "string" ? record.input : "",
+              expectedOutput: typeof record.expectedOutput === "string" ? record.expectedOutput : ""
+            };
+          })
+          .filter((item) => item.input.length > 0 && item.expectedOutput.length > 0)
+      : undefined,
     evaluationGuidance: {
       keyDifferentiators: Array.isArray(evaluationGuidanceInput?.keyDifferentiators)
         ? evaluationGuidanceInput.keyDifferentiators.filter((item): item is string => typeof item === "string")
@@ -306,7 +327,7 @@ function buildStageThreePrompt(reviewedRequirement: string): string {
   return [
     "Convert the reviewed requirement into strict JSON.",
     "Return only JSON object with keys:",
-    "title, description, functionalRequirements[], constraints[], expectedDeliverables[], evaluationGuidance{keyDifferentiators[], commonPitfalls[], edgeCases[]}, selfReviewPassed",
+    "title, description, functionalRequirements[], constraints[], expectedDeliverables[], exampleIO[{input,expectedOutput}], evaluationGuidance{keyDifferentiators[], commonPitfalls[], edgeCases[]}, selfReviewPassed",
     "Each functional requirement must include id, description, acceptanceCriteria, priority.",
     "", 
     "Reviewed requirement:",
@@ -325,7 +346,21 @@ export class RequirementGenerator {
     const seedValue = input.seed ?? `${input.domain}:${input.scenario}:${Date.now()}`;
     const rng = new SeededRng(seedValue);
     const selectedSeed = chooseSeed(input, this.seeds, rng);
-    const generated = fillTemplate(selectedSeed, input, rng);
+    const shouldSampleTaxonomy =
+      input.domain.trim().toLowerCase() === "generic" || input.scenario.trim().toLowerCase() === "pipeline-eval";
+    const sampledDomain = shouldSampleTaxonomy ? pickOne(DOMAIN_NAMES, rng) : input.domain;
+    const sampledScenario =
+      shouldSampleTaxonomy && sampledDomain in DOMAIN_TAXONOMY
+        ? pickOne([...DOMAIN_TAXONOMY[sampledDomain as keyof typeof DOMAIN_TAXONOMY]], rng)
+        : input.scenario;
+
+    const normalizedInput: GenerationInput = {
+      ...input,
+      domain: sampledDomain,
+      scenario: sampledScenario
+    };
+
+    const generated = fillTemplate(selectedSeed, normalizedInput, rng);
 
     const stageOne = await modelConfig.provider.chat({
       model: modelConfig.model,
@@ -338,7 +373,7 @@ export class RequirementGenerator {
         },
         {
           role: "user",
-          content: buildStageOnePrompt(input, generated.text)
+          content: buildStageOnePrompt(normalizedInput, generated.text)
         }
       ]
     });
@@ -354,7 +389,7 @@ export class RequirementGenerator {
         },
         {
           role: "user",
-          content: buildStageTwoPrompt(stageOne.content, input.complexity)
+          content: buildStageTwoPrompt(stageOne.content, normalizedInput.complexity)
         }
       ]
     });
@@ -398,11 +433,12 @@ export class RequirementGenerator {
       functionalRequirements: normalized.functionalRequirements,
       constraints,
       expectedDeliverables: normalized.expectedDeliverables,
+      exampleIO: normalized.exampleIO,
       metadata: {
         skills: input.skills,
         complexity: input.complexity,
-        domain: input.domain,
-        scenario: input.scenario,
+        domain: normalizedInput.domain,
+        scenario: normalizedInput.scenario,
         techStack: input.techStack,
         seedId: selectedSeed.id,
         mutationLog: generated.mutationLog

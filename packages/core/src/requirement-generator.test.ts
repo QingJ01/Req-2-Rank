@@ -45,6 +45,12 @@ class StubProvider implements LLMProvider {
         ],
         constraints: ["Use TypeScript"],
         expectedDeliverables: ["source code", "tests"],
+        exampleIO: [
+          {
+            input: "POST /orders with valid payload",
+            expectedOutput: "201 Created with order id"
+          }
+        ],
         evaluationGuidance: {
           keyDifferentiators: ["robust validation"],
           commonPitfalls: ["missing error handling"],
@@ -117,6 +123,7 @@ describe("RequirementGenerator", () => {
     expect(provider.callCount).toBe(3);
     expect(result.functionalRequirements.length).toBeGreaterThanOrEqual(2);
     expect(result.title).toBe("Generated requirement");
+    expect(result.exampleIO?.[0]?.input).toContain("POST /orders");
   });
 
   it("supports C3/C4 generation with richer seeds", async () => {
@@ -151,5 +158,25 @@ describe("RequirementGenerator", () => {
     expect(c4.metadata.complexity).toBe("C4");
     expect(c3.metadata.seedId).toBeTruthy();
     expect(c4.metadata.seedId).toBeTruthy();
+  });
+
+  it("samples domain taxonomy for generic pipeline input", async () => {
+    const provider = new StubProvider();
+    const generator = new RequirementGenerator();
+
+    const generated = await generator.generate(
+      {
+        skills: ["api-design", "error-handling"],
+        complexity: "C2",
+        domain: "generic",
+        scenario: "pipeline-eval",
+        techStack: ["typescript"],
+        seed: "taxonomy-seed"
+      },
+      { provider, model: "gpt-4o-mini" }
+    );
+
+    expect(generated.metadata.domain).not.toBe("generic");
+    expect(generated.metadata.scenario).not.toBe("pipeline-eval");
   });
 });

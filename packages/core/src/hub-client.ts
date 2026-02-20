@@ -5,6 +5,13 @@ export interface HubClient {
   requestNonce(): Promise<NonceResponse>;
   submit(payload: SubmissionRequest): Promise<SubmissionResponse>;
   getLeaderboard(query: LeaderboardQuery): Promise<LeaderboardEntry[]>;
+  submitCalibration(payload: {
+    recommendedComplexity: "C1" | "C2" | "C3" | "C4";
+    reason: string;
+    averageScore: number;
+    sampleSize: number;
+    source?: string;
+  }): Promise<{ ok: boolean }>;
 }
 
 export interface HubClientOptions {
@@ -42,6 +49,10 @@ class PlaceholderHubClient implements HubClient {
       ...entry,
       rank: offset + index + 1
     }));
+  }
+
+  async submitCalibration(): Promise<{ ok: boolean }> {
+    return { ok: false };
   }
 }
 
@@ -98,9 +109,28 @@ class HttpHubClient implements HubClient {
       offset: String(normalizedQuery.offset),
       sort: normalizedQuery.sort
     });
+    if (normalizedQuery.complexity) {
+      params.set("complexity", normalizedQuery.complexity);
+    }
+    if (normalizedQuery.dimension) {
+      params.set("dimension", normalizedQuery.dimension);
+    }
 
     return this.requestJson<LeaderboardEntry[]>(`/api/leaderboard?${params.toString()}`, {
       method: "GET"
+    });
+  }
+
+  async submitCalibration(payload: {
+    recommendedComplexity: "C1" | "C2" | "C3" | "C4";
+    reason: string;
+    averageScore: number;
+    sampleSize: number;
+    source?: string;
+  }): Promise<{ ok: boolean }> {
+    return this.requestJson<{ ok: boolean }>("/api/calibration", {
+      method: "POST",
+      body: JSON.stringify(payload)
     });
   }
 }

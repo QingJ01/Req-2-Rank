@@ -8,8 +8,14 @@ describe("parseLeaderboardQuery", () => {
   });
 
   it("normalizes numeric strings", () => {
-    const query = parseLeaderboardQuery({ limit: "2", offset: "1", sort: "asc" });
-    expect(query).toEqual({ limit: 2, offset: 1, sort: "asc" });
+    const query = parseLeaderboardQuery({
+      limit: "2",
+      offset: "1",
+      sort: "asc",
+      complexity: "C3",
+      dimension: "security"
+    });
+    expect(query).toEqual({ limit: 2, offset: 1, sort: "asc", complexity: "C3", dimension: "security" });
   });
 
   it("throws labeled errors for invalid values", () => {
@@ -28,5 +34,10 @@ describe("parseLeaderboardQuery", () => {
   it("enforces limit and offset boundaries", () => {
     expect(() => parseLeaderboardQuery({ limit: 0 })).toThrow("limit must be a positive integer");
     expect(() => parseLeaderboardQuery({ offset: -1 })).toThrow("offset must be a non-negative integer");
+  });
+
+  it("rejects invalid complexity and dimension", () => {
+    expect(() => parseLeaderboardQuery({ complexity: "C9" })).toThrow("Invalid complexity value: C9");
+    expect(() => parseLeaderboardQuery({ dimension: "unknown" })).toThrow("Invalid dimension value: unknown");
   });
 });

@@ -23,6 +23,10 @@ export interface ProjectRequirement {
   functionalRequirements: FunctionalRequirement[];
   constraints: string[];
   expectedDeliverables: string[];
+  exampleIO?: Array<{
+    input: string;
+    expectedOutput: string;
+  }>;
   metadata: {
     skills: string[];
     complexity: Complexity;

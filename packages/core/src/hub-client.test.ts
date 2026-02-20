@@ -89,6 +89,13 @@ describe("HubClient placeholder", () => {
         });
       }
 
+      if (input.endsWith("/api/calibration")) {
+        return new Response(JSON.stringify({ ok: true }), {
+          status: 200,
+          headers: { "content-type": "application/json" }
+        });
+      }
+
       return new Response("not found", { status: 404 });
     });
 
@@ -126,5 +133,14 @@ describe("HubClient placeholder", () => {
 
     const leaderboard = await client.getLeaderboard({ limit: 10, offset: 0, sort: "desc" });
     expect(leaderboard[0]?.model).toBe("openai/gpt-4o-mini");
+
+    const calibration = await client.submitCalibration({
+      recommendedComplexity: "C2",
+      reason: "stable",
+      averageScore: 80,
+      sampleSize: 5,
+      source: "cli"
+    });
+    expect(calibration.ok).toBe(true);
   });
 });
