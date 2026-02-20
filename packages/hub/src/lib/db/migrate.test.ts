@@ -10,7 +10,7 @@ describe("resolveDatabaseUrlForMigrations", () => {
 
     try {
       await writeFile(join(cwd, ".env"), "R2R_DATABASE_URL=postgres://demo:demo@127.0.0.1:5432/r2r\n", "utf-8");
-      const env: NodeJS.ProcessEnv = {};
+      const env = {} as NodeJS.ProcessEnv;
 
       const databaseUrl = resolveDatabaseUrlForMigrations({ cwd, env });
       expect(databaseUrl).toBe("postgres://demo:demo@127.0.0.1:5432/r2r");

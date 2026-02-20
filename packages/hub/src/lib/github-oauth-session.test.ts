@@ -2,14 +2,15 @@ import { afterEach, describe, expect, it } from "vitest";
 import { issueGithubOAuthState } from "./github-oauth-session.js";
 
 describe("github oauth session persistence", () => {
+  const mutableEnv = process.env as Record<string, string | undefined>;
   const originalNodeEnv = process.env.NODE_ENV;
   const originalDatabaseUrl = process.env.R2R_DATABASE_URL;
   const originalStrict = process.env.R2R_OAUTH_STRICT_PERSISTENCE;
 
   afterEach(() => {
-    process.env.NODE_ENV = originalNodeEnv;
-    process.env.R2R_DATABASE_URL = originalDatabaseUrl;
-    process.env.R2R_OAUTH_STRICT_PERSISTENCE = originalStrict;
+    mutableEnv.NODE_ENV = originalNodeEnv;
+    mutableEnv.R2R_DATABASE_URL = originalDatabaseUrl;
+    mutableEnv.R2R_OAUTH_STRICT_PERSISTENCE = originalStrict;
   });
 
   it("throws when strict persistence is enabled without database url", async () => {
