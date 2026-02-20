@@ -118,9 +118,10 @@ a:hover {
 }
 
 .hub-header-inner {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
   align-items: center;
+  gap: 20px;
   max-width: 1440px;
   margin: 0 auto;
 }
@@ -142,6 +143,15 @@ a:hover {
   font-size: 0.875rem;
   font-weight: 500;
   align-items: center;
+  justify-content: center;
+  min-width: 0;
+}
+
+.hub-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  justify-self: end;
 }
 
 /* Hero Section */
@@ -920,6 +930,7 @@ a:hover {
   }
 
   .hub-header-inner {
+    display: flex;
     flex-direction: column;
     align-items: stretch;
     gap: 16px;
@@ -948,6 +959,10 @@ a:hover {
 
   .hub-main {
     padding: 20px 16px;
+  }
+
+  .hub-header-actions {
+    justify-content: center;
   }
 
   .hub-viz-dimension-row {

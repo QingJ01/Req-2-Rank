@@ -11,6 +11,13 @@ type SessionPayload = {
   data?: { actorId?: string };
 };
 
+export function resolveActorLandingPath(actorId?: string): string {
+  if (!actorId) {
+    return "/auth";
+  }
+  return actorId.toLowerCase() === "qingj01" ? "/admin" : "/auth";
+}
+
 export function AuthStatusClient() {
   const router = useRouter();
   const [actorId, setActorId] = useState<string | null>(null);
@@ -68,13 +75,16 @@ export function AuthStatusClient() {
     </Link>
   ) : (
     <span className="hub-muted">
-      {t(lang, "signedInAs")} {actorId} ·{" "}
+      <Link className="hub-nav-link" href={resolveActorLandingPath(actorId)}>
+        {t(lang, "signedInAs")} {actorId}
+      </Link>
+      {" "}·{" "}
       <a href="/api/auth/github?action=logout&redirect=/auth">{t(lang, "logout")}</a>
     </span>
   );
 
   return (
-    <div className="hub-header-actions" style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+    <div className="hub-header-actions">
       {authNode}
       <button className="hub-lang-toggle" onClick={toggleLang} type="button">
         {lang === "zh" ? "EN" : "中文"}

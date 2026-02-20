@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { isActivePath, pickLang } from "../i18n.js";
+import { resolveActorLandingPath } from "../auth-status.client.js";
 import { parseHashRoute, toHash } from "./route-helpers.js";
 import { DIMENSION_KEYS, getDimensions, safeScore, statusLabel } from "./viz-utils.js";
 
@@ -78,5 +79,14 @@ describe("path helpers", () => {
     expect(isActivePath("/workbench", "/")).toBe(false);
     expect(isActivePath("/", "/workbench")).toBe(false);
     expect(isActivePath("/model/openai%2Fgpt-4o-mini", "/workbench")).toBe(false);
+  });
+});
+
+describe("auth status helpers", () => {
+  it("resolves actor landing page", () => {
+    expect(resolveActorLandingPath("QingJ01")).toBe("/admin");
+    expect(resolveActorLandingPath("qingj01")).toBe("/admin");
+    expect(resolveActorLandingPath("user-a")).toBe("/auth");
+    expect(resolveActorLandingPath(undefined)).toBe("/auth");
   });
 });
