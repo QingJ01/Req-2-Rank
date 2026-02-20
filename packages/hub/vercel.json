@@ -1,6 +1,6 @@
 {
   "framework": "nextjs",
-  "buildCommand": "pnpm --filter @req2rank/hub next:build",
+  "buildCommand": "pnpm --filter @req2rank/hub db:migrate && pnpm --filter @req2rank/hub next:build",
   "installCommand": "pnpm install --frozen-lockfile",
   "outputDirectory": ".next",
   "regions": ["hkg1"],
