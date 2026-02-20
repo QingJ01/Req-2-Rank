@@ -1,5 +1,5 @@
-import { parseBearerToken } from "../../../lib/auth.js";
-import { appStore, appValidate } from "../../state.js";
+import { parseBearerToken } from "../../../lib/auth";
+import { appStore, appValidate } from "../../state";
 
 interface CalibrationPayload {
   recommendedComplexity: "C1" | "C2" | "C3" | "C4";

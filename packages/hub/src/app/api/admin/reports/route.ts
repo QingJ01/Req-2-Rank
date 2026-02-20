@@ -1,5 +1,5 @@
-import { listAdminActionLogs, listCommunityReports } from "../../../../report-store.js";
-import { createCsrfToken, csrfCookieHeader, requireAdminActor } from "../../../../lib/admin-auth.js";
+import { listAdminActionLogs, listCommunityReports } from "../../../../report-store";
+import { createCsrfToken, csrfCookieHeader, requireAdminActor } from "../../../../lib/admin-auth";
 
 export async function GET(request: Request): Promise<Response> {
   const auth = await requireAdminActor(request);

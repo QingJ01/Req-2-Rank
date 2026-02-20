@@ -10,11 +10,13 @@ export function createPipelineCheckpointKey(scope: "run" | "compare", config: Re
     },
     systemModel: {
       provider: config.systemModel.provider,
-      model: config.systemModel.model
+      model: config.systemModel.model,
+      baseUrl: config.systemModel.baseUrl ?? null
     },
     judges: config.judges.map((judge) => ({
       provider: judge.provider,
       model: judge.model,
+      baseUrl: judge.baseUrl ?? null,
       weight: judge.weight
     })),
     test: {

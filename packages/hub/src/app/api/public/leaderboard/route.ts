@@ -1,4 +1,4 @@
-import { appStore } from "../../../state.js";
+import { appStore } from "../../../state";
 
 function validatePublicKey(request: Request): boolean {
   const configured = process.env.R2R_PUBLIC_API_KEY;

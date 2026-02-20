@@ -1,5 +1,5 @@
-import { appStore } from "../../../../state.js";
-import { requireAdminActor } from "../../../../../lib/admin-auth.js";
+import { appStore } from "../../../../state";
+import { requireAdminActor } from "../../../../../lib/admin-auth";
 
 export async function GET(request: Request): Promise<Response> {
   const auth = await requireAdminActor(request);

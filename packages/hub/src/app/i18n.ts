@@ -1,4 +1,5 @@
 export type Lang = "zh" | "en";
+export const HUB_LANG_EVENT = "hub:lang-change";
 
 export function isLang(value: string | null | undefined): value is Lang {
   return value === "zh" || value === "en";
@@ -8,14 +9,8 @@ export function resolveLang(input?: string | null): Lang {
   return isLang(input) ? input : "zh";
 }
 
-export function pickLang(queryLang?: string | null, storedLang?: string | null): Lang {
-  if (isLang(queryLang)) {
-    return queryLang;
-  }
-  if (isLang(storedLang)) {
-    return storedLang;
-  }
-  return "zh";
+export function pickLang(storedLang?: string | null): Lang {
+  return isLang(storedLang) ? storedLang : "zh";
 }
 
 function normalizePath(path: string): string {
@@ -27,9 +22,4 @@ function normalizePath(path: string): string {
 
 export function isActivePath(currentPath: string, targetPath: string): boolean {
   return normalizePath(currentPath) === normalizePath(targetPath);
-}
-
-export function localizePath(path: string, lang: Lang): string {
-  const separator = path.includes("?") ? "&" : "?";
-  return `${path}${separator}lang=${lang}`;
 }

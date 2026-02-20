@@ -1,6 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { HUB_LANG_EVENT, pickLang, type Lang } from "./i18n";
+import { t } from "./locales";
 
 type SessionPayload = {
   ok: boolean;
@@ -8,16 +12,25 @@ type SessionPayload = {
 };
 
 export function AuthStatusClient() {
+  const router = useRouter();
   const [actorId, setActorId] = useState<string | null>(null);
-
-  const isEn = useMemo(() => {
-    if (typeof window === "undefined") {
-      return false;
-    }
-    return new URL(window.location.href).searchParams.get("lang") === "en";
-  }, []);
+  const [lang, setLang] = useState<Lang>("zh");
 
   useEffect(() => {
+    const syncLang = () => {
+      setLang(pickLang(window.localStorage.getItem("hub.lang")));
+    };
+
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === "hub.lang") {
+        syncLang();
+      }
+    };
+
+    syncLang();
+    window.addEventListener("storage", onStorage);
+    window.addEventListener(HUB_LANG_EVENT, syncLang);
+
     async function loadSession() {
       try {
         const response = await fetch("/api/auth/github?action=session", { credentials: "include" });
@@ -33,20 +46,39 @@ export function AuthStatusClient() {
     }
 
     void loadSession();
+
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener(HUB_LANG_EVENT, syncLang);
+    };
   }, []);
 
-  if (!actorId) {
-    return (
-      <a className="hub-nav-link" href={`/auth?lang=${isEn ? "en" : "zh"}`}>
-        {isEn ? "Login" : "登录"}
-      </a>
-    );
+  function toggleLang(): void {
+    const nextLang: Lang = lang === "zh" ? "en" : "zh";
+    window.localStorage.setItem("hub.lang", nextLang);
+    document.cookie = `hub.lang=${nextLang};path=/;max-age=31536000;SameSite=Lax`;
+    setLang(nextLang);
+    window.dispatchEvent(new Event(HUB_LANG_EVENT));
+    router.refresh();
   }
 
-  return (
+  const authNode = !actorId ? (
+    <Link className="hub-nav-link" href="/auth">
+      {t(lang, "login")}
+    </Link>
+  ) : (
     <span className="hub-muted">
-      {isEn ? "Signed in as" : "已登录"} {actorId} · {" "}
-      <a href={`/api/auth/github?action=logout&redirect=/auth?lang=${isEn ? "en" : "zh"}`}>{isEn ? "Logout" : "退出"}</a>
+      {t(lang, "signedInAs")} {actorId} ·{" "}
+      <a href="/api/auth/github?action=logout&redirect=/auth">{t(lang, "logout")}</a>
     </span>
+  );
+
+  return (
+    <div className="hub-header-actions" style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+      {authNode}
+      <button className="hub-lang-toggle" onClick={toggleLang} type="button">
+        {lang === "zh" ? "EN" : "中文"}
+      </button>
+    </div>
   );
 }

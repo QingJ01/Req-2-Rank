@@ -1,14 +1,35 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import type { Lang } from "../i18n.js";
-import type { LeaderboardRowView, LiveProgressSnapshot, SubmissionDetailView } from "./viz-types.js";
-import { statusBadgeClass, statusLabel } from "./viz-utils.js";
-import { TimelinePlayback } from "./timeline-playback.client.js";
+import type { Lang } from "../i18n";
+import type { LeaderboardRowView, LiveProgressSnapshot, SubmissionDetailView } from "./viz-types";
+import { statusBadgeClass, statusLabel } from "./viz-utils";
+import { TimelinePlayback } from "./timeline-playback.client";
+import { t, type MessageKey } from "../locales";
 
 type LiveMonitorProps = {
   initialModel?: string;
   lang?: Lang;
+};
+
+const phaseKeys: Record<string, MessageKey> = {
+  generate: "phaseGenerate",
+  execute: "phaseExecute",
+  evaluate: "phaseEvaluate",
+  score: "phaseScore",
+};
+
+const progressKeys: Record<string, MessageKey> = {
+  running: "running",
+  completed: "completed",
+  failed: "failed",
+  idle: "idle",
+};
+
+const eventStateKeys: Record<string, MessageKey> = {
+  started: "started",
+  completed: "completed",
+  failed: "failed",
 };
 
 export function LiveMonitor({ initialModel, lang = "zh" }: LiveMonitorProps) {
@@ -79,47 +100,13 @@ export function LiveMonitor({ initialModel, lang = "zh" }: LiveMonitorProps) {
   const selectedSubmission = submissionList[0];
   const selectableModels = useMemo(() => rows.map((item) => item.model), [rows]);
 
-  function progressLabel(status: LiveProgressSnapshot["status"]): string {
-    if (lang === "en") {
-      if (status === "running") return "running";
-      if (status === "completed") return "completed";
-      if (status === "failed") return "failed";
-      return "idle";
-    }
-    if (status === "running") return "运行中";
-    if (status === "completed") return "已完成";
-    if (status === "failed") return "失败";
-    return "空闲";
-  }
-
-  function eventStateLabel(state: "started" | "completed" | "failed"): string {
-    if (lang === "en") {
-      if (state === "started") return "started";
-      if (state === "completed") return "completed";
-      return "failed";
-    }
-    if (state === "started") return "开始";
-    if (state === "completed") return "完成";
-    return "失败";
-  }
-
-  function phaseLabel(phase: "generate" | "execute" | "evaluate" | "score"): string {
-    if (lang === "en") {
-      return phase;
-    }
-    if (phase === "generate") return "生成";
-    if (phase === "execute") return "执行";
-    if (phase === "evaluate") return "评估";
-    return "评分";
-  }
-
   return (
     <section className="hub-grid cols-2">
-      <section className="hub-card" style={{ padding: 14 }}>
+      <section className="hub-card hub-card-padded">
         <div className="hub-viz-panel-head">
-          <h2>{lang === "en" ? "Realtime Watch" : "实时监控"}</h2>
+          <h2>{t(lang, "realtimeWatch")}</h2>
           <label>
-            <span className="hub-muted" style={{ marginRight: 6 }}>{lang === "en" ? "Model" : "模型"}</span>
+            <span className="hub-muted" style={{ marginRight: 6 }}>{t(lang, "model")}</span>
             <select value={streamModel} onChange={(event) => setModel(event.target.value)}>
               {selectableModels.length === 0 ? <option value="">-</option> : null}
               {selectableModels.map((item) => (
@@ -128,25 +115,25 @@ export function LiveMonitor({ initialModel, lang = "zh" }: LiveMonitorProps) {
             </select>
           </label>
         </div>
-        <p className="hub-muted">{lang === "en" ? "Stream status" : "连接状态"}：{connected ? (lang === "en" ? "connected" : "已连接") : (lang === "en" ? "disconnected" : "未连接")}。</p>
+        <p className="hub-muted">{t(lang, "streamStatus")}：{connected ? t(lang, "connected") : t(lang, "disconnected")}。</p>
 
         {liveProgress ? (
           <div className="hub-viz-live-progress">
-            <div><strong>{lang === "en" ? "Pipeline" : "流水线"}</strong>：{progressLabel(liveProgress.status)}</div>
-            <div><strong>{lang === "en" ? "Model" : "模型"}</strong>：{liveProgress.model ?? "-"}</div>
-            <div><strong>{lang === "en" ? "Run" : "运行"}</strong>：{liveProgress.runId ?? "-"}</div>
-            <div><strong>{lang === "en" ? "Updated" : "更新时间"}</strong>：{new Date(liveProgress.updatedAt).toLocaleTimeString()}</div>
+            <div><strong>{t(lang, "pipeline")}</strong>：{t(lang, progressKeys[liveProgress.status] ?? "idle")}</div>
+            <div><strong>{t(lang, "model")}</strong>：{liveProgress.model ?? "-"}</div>
+            <div><strong>{t(lang, "run")}</strong>：{liveProgress.runId ?? "-"}</div>
+            <div><strong>{t(lang, "updated")}</strong>：{new Date(liveProgress.updatedAt).toLocaleTimeString()}</div>
           </div>
         ) : (
-          <p className="hub-muted">{lang === "en" ? "No active pipeline progress detected." : "暂无活跃流水线进度。"}</p>
+          <p className="hub-muted">{t(lang, "noProgress")}</p>
         )}
 
         <table className="hub-table">
           <thead>
             <tr>
-              <th>{lang === "en" ? "Model" : "模型"}</th>
-              <th>{lang === "en" ? "Score" : "得分"}</th>
-              <th>{lang === "en" ? "Status" : "状态"}</th>
+              <th>{t(lang, "model")}</th>
+              <th>{t(lang, "score")}</th>
+              <th>{t(lang, "status")}</th>
             </tr>
           </thead>
           <tbody>
@@ -164,22 +151,22 @@ export function LiveMonitor({ initialModel, lang = "zh" }: LiveMonitorProps) {
       {selectedSubmission ? (
         <TimelinePlayback submission={selectedSubmission} lang={lang} />
       ) : (
-        <section className="hub-card" style={{ padding: 14 }}>
-          <p className="hub-muted">{lang === "en" ? "No run selected." : "未选择运行记录。"}</p>
+        <section className="hub-card hub-card-padded">
+          <p className="hub-muted">{t(lang, "noRunSelected")}</p>
         </section>
       )}
 
-      <section className="hub-card" style={{ padding: 14 }}>
-        <h3>{lang === "en" ? "Stage Event Feed" : "阶段事件流"}</h3>
+      <section className="hub-card hub-card-padded">
+        <h3>{t(lang, "stageEventFeed")}</h3>
         <ul className="hub-viz-timeline-list">
           {(liveProgress?.events ?? []).slice(-10).reverse().map((event, index) => (
             <li key={`${event.timestamp}-${index}`} className={event.state === "failed" ? "hub-viz-phase active" : "hub-viz-phase"}>
               <div className="hub-viz-phase-title">
                 {lang === "en"
-                  ? `R${event.roundIndex + 1}/${event.totalRounds} ${phaseLabel(event.phase)}`
-                  : `第 ${event.roundIndex + 1}/${event.totalRounds} 轮 · ${phaseLabel(event.phase)}`}
+                  ? `R${event.roundIndex + 1}/${event.totalRounds} ${t(lang, phaseKeys[event.phase] ?? "phaseScore")}`
+                  : `第 ${event.roundIndex + 1}/${event.totalRounds} 轮 · ${t(lang, phaseKeys[event.phase] ?? "phaseScore")}`}
               </div>
-              <div className="hub-viz-phase-meta">{eventStateLabel(event.state)}</div>
+              <div className="hub-viz-phase-meta">{t(lang, eventStateKeys[event.state] ?? "started")}</div>
               <div className="hub-viz-phase-time">
                 {new Date(event.timestamp).toLocaleTimeString()} {event.message ? `- ${event.message}` : ""}
               </div>

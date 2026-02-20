@@ -1,4 +1,4 @@
-import { resolveGithubOAuthSession } from "./github-oauth-session.js";
+import { resolveGithubOAuthSession } from "./github-oauth-session";
 
 const DEFAULT_ADMIN_LOGIN = "QingJ01";
 export const ADMIN_CSRF_COOKIE = "r2r_admin_csrf";

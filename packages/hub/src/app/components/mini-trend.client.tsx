@@ -1,12 +1,16 @@
 "use client";
 
+import type { Lang } from "../i18n";
+import { t } from "../locales";
+
 type MiniTrendProps = {
   points: number[];
+  lang?: Lang;
 };
 
-export function MiniTrend({ points }: MiniTrendProps) {
+export function MiniTrend({ points, lang = "zh" }: MiniTrendProps) {
   if (points.length === 0) {
-    return <span className="hub-muted">暂无</span>;
+    return <span className="hub-muted">{t(lang, "noData")}</span>;
   }
 
   const width = 120;
@@ -23,7 +27,12 @@ export function MiniTrend({ points }: MiniTrendProps) {
     .join(" ");
 
   return (
-    <svg className="hub-viz-sparkline" viewBox={`0 0 ${width} ${height}`} aria-hidden>
+    <svg
+      className="hub-viz-sparkline"
+      viewBox={`0 0 ${width} ${height}`}
+      role="img"
+      aria-label={lang === "en" ? `Trend sparkline with ${points.length} points` : `包含 ${points.length} 个点的趋势图`}
+    >
       <path d={path} />
     </svg>
   );

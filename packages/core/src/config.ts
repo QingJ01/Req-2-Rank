@@ -10,26 +10,47 @@ const complexitySchema = z.union([
   z.literal("mixed")
 ]);
 
+const providerTypeSchema = z.enum([
+  "openai",
+  "openai-response",
+  "gemini",
+  "anthropic",
+  "azure-openai",
+  "newapi",
+  "google",
+  "custom"
+]);
+
+const modelEndpointBaseSchema = z.object({
+  provider: providerTypeSchema,
+  model: z.string().min(1),
+  apiKey: z.string().optional(),
+  baseUrl: z.string().url().nullable().optional()
+});
+
+function withProviderBaseUrlRules<T extends z.ZodRawShape>(schema: z.ZodObject<T>): z.ZodEffects<z.ZodObject<T>> {
+  return schema.superRefine((value, context) => {
+    if ((value.provider === "azure-openai" || value.provider === "newapi") && !value.baseUrl) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `baseUrl is required for ${value.provider}`,
+        path: ["baseUrl"]
+      });
+    }
+  });
+}
+
+const modelEndpointSchema = withProviderBaseUrlRules(modelEndpointBaseSchema);
+const judgeEndpointSchema = withProviderBaseUrlRules(
+  modelEndpointBaseSchema.extend({
+    weight: z.number().positive().default(1)
+  })
+);
+
 export const req2rankConfigSchema = z.object({
-  target: z.object({
-    provider: z.string().min(1),
-    model: z.string().min(1),
-    apiKey: z.string().optional(),
-    baseUrl: z.string().url().nullable().optional()
-  }),
-  systemModel: z.object({
-    provider: z.string().min(1),
-    model: z.string().min(1),
-    apiKey: z.string().optional()
-  }),
-  judges: z.array(
-    z.object({
-      provider: z.string().min(1),
-      model: z.string().min(1),
-      apiKey: z.string().optional(),
-      weight: z.number().positive().default(1)
-    })
-  ),
+  target: modelEndpointSchema,
+  systemModel: modelEndpointSchema,
+  judges: z.array(judgeEndpointSchema),
   test: z.object({
     complexity: complexitySchema,
     rounds: z.number().int().positive(),

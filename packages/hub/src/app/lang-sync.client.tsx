@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect } from "react";
-import { isLang, pickLang } from "./i18n.js";
+import { HUB_LANG_EVENT, isLang } from "./i18n";
 
 const STORAGE_KEY = "hub.lang";
+const COOKIE_KEY = "hub.lang";
 
 export function LangSync() {
   useEffect(() => {
@@ -11,26 +12,27 @@ export function LangSync() {
       return;
     }
 
-    const url = new URL(window.location.href);
-    const queryLang = url.searchParams.get("lang");
-    const storedLang = window.localStorage.getItem(STORAGE_KEY);
-    const lang = pickLang(queryLang, storedLang);
+    const syncLangCookie = () => {
+      const storedLang = window.localStorage.getItem(STORAGE_KEY);
+      if (isLang(storedLang)) {
+        document.cookie = `${COOKIE_KEY}=${storedLang};path=/;max-age=31536000;SameSite=Lax`;
+      }
+    };
 
-    if (isLang(queryLang)) {
-      window.localStorage.setItem(STORAGE_KEY, queryLang);
-      return;
-    }
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === STORAGE_KEY) {
+        syncLangCookie();
+      }
+    };
 
-    if (storedLang !== lang) {
-      window.localStorage.setItem(STORAGE_KEY, lang);
-    }
+    syncLangCookie();
+    window.addEventListener("storage", handleStorage);
+    window.addEventListener(HUB_LANG_EVENT, syncLangCookie);
 
-    url.searchParams.set("lang", lang);
-    const target = `${url.pathname}?${url.searchParams.toString()}${url.hash}`;
-    const current = `${window.location.pathname}${window.location.search}${window.location.hash}`;
-    if (target !== current) {
-      window.location.replace(target);
-    }
+    return () => {
+      window.removeEventListener("storage", handleStorage);
+      window.removeEventListener(HUB_LANG_EVENT, syncLangCookie);
+    };
   }, []);
 
   return null;

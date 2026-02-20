@@ -233,7 +233,7 @@ function applyRunOverrides(config: Req2RankConfig, overrides: RunOverrides): Req
     if (!provider || !model) {
       throw new Error(`Invalid --target format: ${overrides.target}`);
     }
-    nextConfig.target.provider = provider;
+    nextConfig.target.provider = provider as Req2RankConfig["target"]["provider"];
     nextConfig.target.model = model;
   }
 
@@ -256,7 +256,7 @@ function applyEnvOverrides(config: Req2RankConfig, env: Record<string, string | 
   const nextConfig: Req2RankConfig = JSON.parse(JSON.stringify(config));
 
   if (env.R2R_TARGET_PROVIDER) {
-    nextConfig.target.provider = env.R2R_TARGET_PROVIDER;
+    nextConfig.target.provider = env.R2R_TARGET_PROVIDER as Req2RankConfig["target"]["provider"];
   }
 
   if (env.R2R_TARGET_MODEL) {

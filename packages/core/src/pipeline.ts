@@ -175,6 +175,7 @@ export class PipelineOrchestrator {
     provider: string;
     apiKey?: string;
     baseUrl?: string | null;
+    apiVersion?: string;
   }): LLMProvider {
     const apiKey = config.apiKey ?? "";
     if (!apiKey && this.isDefaultProviderFactory) {
@@ -184,7 +185,11 @@ export class PipelineOrchestrator {
     if (
       this.isDefaultProviderFactory &&
       config.provider !== "openai" &&
+      config.provider !== "openai-response" &&
       config.provider !== "anthropic" &&
+      config.provider !== "gemini" &&
+      config.provider !== "azure-openai" &&
+      config.provider !== "newapi" &&
       config.provider !== "google" &&
       config.provider !== "custom"
     ) {
@@ -192,7 +197,16 @@ export class PipelineOrchestrator {
     }
 
     return this.providerFactory({
-      provider: (config.provider as "openai" | "anthropic" | "google" | "custom") ?? "openai",
+      provider:
+        (config.provider as
+          | "openai"
+          | "openai-response"
+          | "anthropic"
+          | "gemini"
+          | "azure-openai"
+          | "newapi"
+          | "google"
+          | "custom") ?? "openai",
       apiKey: apiKey || "stub-key",
       baseUrl: config.baseUrl ?? undefined
     });
@@ -213,7 +227,8 @@ export class PipelineOrchestrator {
 
     const systemProvider = this.resolveProvider({
       provider: input.config.systemModel.provider,
-      apiKey: input.config.systemModel.apiKey
+      apiKey: input.config.systemModel.apiKey,
+      baseUrl: input.config.systemModel.baseUrl
     });
     const targetProvider = this.resolveProvider({
       provider: input.config.target.provider,
@@ -228,7 +243,11 @@ export class PipelineOrchestrator {
       if (!judgeProviderById.has(providerKey)) {
         judgeProviderById.set(
           providerKey,
-          this.resolveProvider({ provider: judge.provider, apiKey: (judge as { apiKey?: string }).apiKey })
+          this.resolveProvider({
+            provider: judge.provider,
+            apiKey: (judge as { apiKey?: string }).apiKey,
+            baseUrl: (judge as { baseUrl?: string | null }).baseUrl
+          })
         );
       }
     }

@@ -1,4 +1,4 @@
-import { SubmissionStore } from "./routes.js";
+import { SubmissionStore } from "./routes";
 import { PipelineOrchestrator, Req2RankConfig } from "@req2rank/core";
 
 export interface ReverificationWorkerResult {
@@ -24,6 +24,7 @@ function parseProviderModel(model: string): { provider: string; model: string } 
 
 function buildReverificationConfig(submissionModel: string): Req2RankConfig {
   const target = parseProviderModel(submissionModel);
+  const toProvider = (value: string): Req2RankConfig["target"]["provider"] => value as Req2RankConfig["target"]["provider"];
 
   const targetApiKey = process.env.R2R_REVERIFY_TARGET_API_KEY;
   const systemProvider = process.env.R2R_REVERIFY_SYSTEM_PROVIDER;
@@ -39,19 +40,19 @@ function buildReverificationConfig(submissionModel: string): Req2RankConfig {
 
   return {
     target: {
-      provider: target.provider,
+      provider: toProvider(target.provider),
       model: target.model,
       apiKey: targetApiKey,
       baseUrl: process.env.R2R_REVERIFY_TARGET_BASE_URL ?? undefined
     },
     systemModel: {
-      provider: systemProvider,
+      provider: toProvider(systemProvider),
       model: systemModel,
       apiKey: systemApiKey
     },
     judges: [
       {
-        provider: judgeProvider,
+        provider: toProvider(judgeProvider),
         model: judgeModel,
         apiKey: judgeApiKey,
         weight: 1

@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
+import { HUB_LANG_EVENT, pickLang, type Lang } from "../i18n";
+import { t } from "../locales";
 
 type CommunityReport = {
   id: string;
@@ -77,6 +79,7 @@ export function AdminDashboardClient() {
   const [statusFilter, setStatusFilter] = useState<"all" | "open" | "resolved">("open");
   const [sortBy, setSortBy] = useState<"createdAt" | "status">("createdAt");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [queryInput, setQueryInput] = useState("");
   const [query, setQuery] = useState("");
   const [offset, setOffset] = useState(0);
   const [limit] = useState(10);
@@ -88,13 +91,37 @@ export function AdminDashboardClient() {
   const [selectedEvidence, setSelectedEvidence] = useState<SubmissionEvidence | null>(null);
   const [evidenceLoading, setEvidenceLoading] = useState(false);
 
-  const isEn = useMemo(() => {
-    if (typeof window === "undefined") {
-      return false;
-    }
-    const url = new URL(window.location.href);
-    return url.searchParams.get("lang") === "en";
+  const [lang, setLang] = useState<Lang>("zh");
+
+  useEffect(() => {
+    const syncLang = () => {
+      setLang(pickLang(window.localStorage.getItem("hub.lang")));
+    };
+
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === "hub.lang") {
+        syncLang();
+      }
+    };
+
+    syncLang();
+    window.addEventListener("storage", onStorage);
+    window.addEventListener(HUB_LANG_EVENT, syncLang);
+
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener(HUB_LANG_EVENT, syncLang);
+    };
   }, []);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setQuery(queryInput);
+    }, 300);
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [queryInput]);
 
   async function loadReports(): Promise<void> {
     setLoading(true);
@@ -113,7 +140,7 @@ export function AdminDashboardClient() {
       const response = await fetch(`/api/admin/reports?${params.toString()}`, { credentials: "include" });
       const payload = (await response.json()) as AdminApiResponse;
       if (!payload.ok || !payload.data) {
-        const message = payload.error?.message ?? (isEn ? "Failed to load admin reports" : "加载管理举报失败");
+        const message = payload.error?.message ?? t(lang, "loadFailed");
         setError(message);
         if (message.includes("admin session required") || message.includes("forbidden")) {
           void loadGithubLoginUrl();
@@ -171,7 +198,7 @@ export function AdminDashboardClient() {
       });
       const payload = (await response.json()) as ResolveApiResponse;
       if (!payload.ok) {
-        setError(payload.error?.message ?? (isEn ? "Failed to process report" : "处理举报失败"));
+        setError(payload.error?.message ?? t(lang, "processFailed"));
         return;
       }
 
@@ -202,7 +229,7 @@ export function AdminDashboardClient() {
       });
       const payload = (await response.json()) as ResolveApiResponse;
       if (!payload.ok) {
-        setError(payload.error?.message ?? (isEn ? "Batch operation failed" : "批量操作失败"));
+        setError(payload.error?.message ?? t(lang, "batchFailed"));
         return;
       }
 
@@ -223,7 +250,7 @@ export function AdminDashboardClient() {
       });
       const payload = (await response.json()) as EvidenceApiResponse;
       if (!payload.ok || !payload.data) {
-        setError(payload.error?.message ?? (isEn ? "Failed to load evidence" : "加载证据失败"));
+        setError(payload.error?.message ?? t(lang, "evidenceFailed"));
         return;
       }
       setSelectedEvidence(payload.data);
@@ -240,23 +267,21 @@ export function AdminDashboardClient() {
 
   return (
     <section>
-      <h1>{isEn ? "Admin Dashboard" : "管理后台"}</h1>
-      <p className="hub-muted">
-        {isEn ? "Community reports and moderation actions (GitHub admin only)." : "社区举报与审核操作（仅 GitHub 管理员可用）。"}
-      </p>
+      <h1>{t(lang, "adminDashboard")}</h1>
+      <p className="hub-muted">{t(lang, "adminDesc")}</p>
       {error ? <p className="hub-muted">{error}</p> : null}
       {error && authUrl ? (
         <p>
-          <a href={authUrl}>{isEn ? "Login with GitHub" : "使用 GitHub 登录"}</a>
-          <span className="hub-muted"> {isEn ? "(admin: QingJ01)" : "（管理员账号：QingJ01）"}</span>
+          <a href={authUrl}>{t(lang, "loginWithGithub")}</a>
+          <span className="hub-muted"> {t(lang, "adminAccount")}</span>
         </p>
       ) : null}
-      {loading ? <p className="hub-muted">{isEn ? "Loading..." : "加载中..."}</p> : null}
+      {loading ? <p className="hub-muted">{t(lang, "loading")}</p> : null}
 
-      <div className="hub-card" style={{ padding: 12, marginBottom: 12 }}>
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+      <div className="hub-card hub-card-padded hub-mb">
+        <div className="hub-flex-bar">
           <label>
-            <span className="hub-muted" style={{ marginRight: 6 }}>{isEn ? "Status" : "状态"}</span>
+            <span className="hub-muted hub-mr-sm">{t(lang, "status")}</span>
             <select
               value={statusFilter}
               onChange={(event) => {
@@ -264,13 +289,13 @@ export function AdminDashboardClient() {
                 setStatusFilter(event.target.value as "all" | "open" | "resolved");
               }}
             >
-              <option value="all">{isEn ? "All" : "全部"}</option>
-              <option value="open">{isEn ? "Open" : "待处理"}</option>
-              <option value="resolved">{isEn ? "Resolved" : "已处理"}</option>
+              <option value="all">{t(lang, "all")}</option>
+              <option value="open">{t(lang, "open")}</option>
+              <option value="resolved">{t(lang, "resolved")}</option>
             </select>
           </label>
           <label>
-            <span className="hub-muted" style={{ marginRight: 6 }}>{isEn ? "Sort" : "排序"}</span>
+            <span className="hub-muted hub-mr-sm">{t(lang, "sort")}</span>
             <select
               value={`${sortBy}:${sortOrder}`}
               onChange={(event) => {
@@ -280,116 +305,118 @@ export function AdminDashboardClient() {
                 setSortOrder(nextSortOrder === "asc" ? "asc" : "desc");
               }}
             >
-              <option value="createdAt:desc">{isEn ? "Newest first" : "最新优先"}</option>
-              <option value="createdAt:asc">{isEn ? "Oldest first" : "最早优先"}</option>
-              <option value="status:asc">{isEn ? "Status A-Z" : "状态升序"}</option>
-              <option value="status:desc">{isEn ? "Status Z-A" : "状态降序"}</option>
+              <option value="createdAt:desc">{t(lang, "newestFirst")}</option>
+              <option value="createdAt:asc">{t(lang, "oldestFirst")}</option>
+              <option value="status:asc">{t(lang, "statusAsc")}</option>
+              <option value="status:desc">{t(lang, "statusDesc")}</option>
             </select>
           </label>
           <label>
-            <span className="hub-muted" style={{ marginRight: 6 }}>{isEn ? "Search" : "搜索"}</span>
+            <span className="hub-muted hub-mr-sm">{t(lang, "search")}</span>
             <input
-              value={query}
+              value={queryInput}
               onChange={(event) => {
                 setOffset(0);
-                setQuery(event.target.value);
+                setQueryInput(event.target.value);
               }}
-              placeholder={isEn ? "runId/reason/details" : "runId/原因/详情"}
+              placeholder={t(lang, "searchPlaceholder")}
             />
           </label>
-          <span className="hub-muted">{isEn ? `Total ${total}` : `共 ${total} 条`}</span>
+          <span className="hub-muted">{lang === "en" ? `Total ${total}` : `共 ${total} 条`}</span>
         </div>
       </div>
 
-      <div style={{ marginBottom: 10, display: "flex", gap: 8, flexWrap: "wrap" }}>
+      <div className="hub-flex-bar hub-mb">
         <button className="hub-viz-button" disabled={selectedIds.length === 0 || busyId !== null} onClick={() => batchResolve(false)}>
-          {isEn ? `Resolve Selected (${selectedIds.length})` : `批量仅处理（${selectedIds.length}）`}
+          {lang === "en" ? `Resolve Selected (${selectedIds.length})` : `批量仅处理（${selectedIds.length}）`}
         </button>
         <button className="hub-viz-button" disabled={selectedIds.length === 0 || busyId !== null} onClick={() => batchResolve(true)}>
-          {isEn ? `Resolve + Reverify Selected (${selectedIds.length})` : `批量处理并复验（${selectedIds.length}）`}
+          {lang === "en" ? `Resolve + Reverify Selected (${selectedIds.length})` : `批量处理并复验（${selectedIds.length}）`}
         </button>
       </div>
 
-      <table className="hub-table hub-card">
-        <thead>
-          <tr>
-            <th>
-              <input
-                type="checkbox"
-                checked={reports.length > 0 && selectedIds.length === reports.length}
-                onChange={(event) => {
-                  if (event.target.checked) {
-                    setSelectedIds(reports.map((report) => report.id));
-                  } else {
-                    setSelectedIds([]);
-                  }
-                }}
-              />
-            </th>
-            <th>ID</th>
-            <th>{isEn ? "Run" : "运行"}</th>
-            <th>{isEn ? "Reason" : "原因"}</th>
-            <th>{isEn ? "Status" : "状态"}</th>
-            <th>{isEn ? "Created" : "创建时间"}</th>
-            <th>{isEn ? "Action" : "操作"}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {reports.length === 0 ? (
+      <div className="hub-card hub-table-wrap">
+        <table className="hub-table">
+          <thead>
             <tr>
-              <td colSpan={7} className="hub-muted">
-                {isEn ? "No reports" : "暂无举报"}
-              </td>
+              <th>
+                <input
+                  type="checkbox"
+                  checked={reports.length > 0 && selectedIds.length === reports.length}
+                  onChange={(event) => {
+                    if (event.target.checked) {
+                      setSelectedIds(reports.map((report) => report.id));
+                    } else {
+                      setSelectedIds([]);
+                    }
+                  }}
+                />
+              </th>
+              <th>ID</th>
+              <th>{t(lang, "run")}</th>
+              <th>{t(lang, "reason")}</th>
+              <th>{t(lang, "status")}</th>
+              <th>{t(lang, "created")}</th>
+              <th>{t(lang, "action")}</th>
             </tr>
-          ) : (
-            reports.map((report) => (
-              <tr key={report.id}>
-                <td>
-                  <input type="checkbox" checked={selectedIds.includes(report.id)} onChange={() => toggleSelect(report.id)} />
-                </td>
-                <td>{report.id}</td>
-                <td>{report.runId}</td>
-                <td>{report.reason}</td>
-                <td>{report.status}</td>
-                <td>{new Date(report.createdAt).toLocaleString()}</td>
-                <td>
-                  <div style={{ display: "grid", gap: 6 }}>
-                    <div>
-                      <button className="hub-viz-button" disabled={evidenceLoading} onClick={() => openEvidence(report.runId)}>
-                        {isEn ? "Evidence" : "证据详情"}
-                      </button>
-                    </div>
-                    {report.status === "resolved" ? (
-                      <span className="hub-muted">{isEn ? "Resolved" : "已处理"}</span>
-                    ) : (
-                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                        <button className="hub-viz-button" disabled={busyId === report.id} onClick={() => resolveReport(report.id, false)}>
-                          {isEn ? "Resolve" : "仅处理"}
-                        </button>
-                        <button className="hub-viz-button" disabled={busyId === report.id} onClick={() => resolveReport(report.id, true)}>
-                          {isEn ? "Resolve + Reverify" : "处理并复验"}
-                        </button>
-                      </div>
-                    )}
-                    <div className="hub-muted" style={{ fontSize: 12 }}>
-                      {(logsByReport[report.id] ?? []).slice(0, 2).map((log) => (
-                        <div key={log.id}>{new Date(log.createdAt).toLocaleString()} · {log.actorId}</div>
-                      ))}
-                    </div>
-                  </div>
+          </thead>
+          <tbody>
+            {reports.length === 0 ? (
+              <tr>
+                <td colSpan={7} className="hub-muted">
+                  {t(lang, "noReports")}
                 </td>
               </tr>
-            ))
-          )}
-        </tbody>
-      </table>
+            ) : (
+              reports.map((report) => (
+                <tr key={report.id}>
+                  <td>
+                    <input type="checkbox" checked={selectedIds.includes(report.id)} onChange={() => toggleSelect(report.id)} />
+                  </td>
+                  <td>{report.id}</td>
+                  <td>{report.runId}</td>
+                  <td>{report.reason}</td>
+                  <td>{report.status}</td>
+                  <td>{new Date(report.createdAt).toLocaleString()}</td>
+                  <td>
+                    <div className="hub-action-grid">
+                      <div>
+                        <button className="hub-viz-button" disabled={evidenceLoading} onClick={() => openEvidence(report.runId)}>
+                          {t(lang, "evidence")}
+                        </button>
+                      </div>
+                      {report.status === "resolved" ? (
+                        <span className="hub-muted">{t(lang, "resolved")}</span>
+                      ) : (
+                        <div className="hub-flex-bar">
+                          <button className="hub-viz-button" disabled={busyId === report.id} onClick={() => resolveReport(report.id, false)}>
+                            {t(lang, "resolve")}
+                          </button>
+                          <button className="hub-viz-button" disabled={busyId === report.id} onClick={() => resolveReport(report.id, true)}>
+                            {t(lang, "resolveReverify")}
+                          </button>
+                        </div>
+                      )}
+                      <div className="hub-muted hub-text-sm">
+                        {(logsByReport[report.id] ?? []).slice(0, 2).map((log) => (
+                          <div key={log.id}>{new Date(log.createdAt).toLocaleString()} · {log.actorId}</div>
+                        ))}
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
 
       {selectedEvidence ? (
-        <section className="hub-card" style={{ padding: 12, marginTop: 12 }}>
-          <h3>{isEn ? "Evidence Detail" : "证据详情"}</h3>
+        <section className="hub-card hub-card-padded hub-mt">
+          <h3>{t(lang, "evidenceDetail")}</h3>
           <p className="hub-muted">{selectedEvidence.runId} · {selectedEvidence.model} · {selectedEvidence.score.toFixed(1)}</p>
           <div>
-            <strong>{isEn ? "Timeline" : "时间线"}</strong>
+            <strong>{t(lang, "timeline")}</strong>
             <ul>
               {(selectedEvidence.evidenceChain?.timeline ?? []).map((item, index) => (
                 <li key={`${item.phase}-${index}`}>
@@ -399,7 +426,7 @@ export function AdminDashboardClient() {
             </ul>
           </div>
           <div>
-            <strong>{isEn ? "Samples" : "样本"}</strong>
+            <strong>{t(lang, "samples")}</strong>
             <ul>
               {(selectedEvidence.evidenceChain?.samples ?? []).slice(0, 2).map((sample) => (
                 <li key={sample.roundIndex}>#{sample.roundIndex} · {sample.requirement.slice(0, 80)}</li>
@@ -409,12 +436,12 @@ export function AdminDashboardClient() {
         </section>
       ) : null}
 
-      <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
+      <div className="hub-flex-bar hub-mt">
         <button className="hub-viz-button" disabled={offset <= 0 || loading} onClick={() => setOffset((value) => Math.max(0, value - limit))}>
-          {isEn ? "Prev" : "上一页"}
+          {t(lang, "prev")}
         </button>
         <button className="hub-viz-button" disabled={offset + limit >= total || loading} onClick={() => setOffset((value) => value + limit)}>
-          {isEn ? "Next" : "下一页"}
+          {t(lang, "next")}
         </button>
       </div>
     </section>

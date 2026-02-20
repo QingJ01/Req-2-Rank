@@ -1,11 +1,13 @@
-import { RouteEnvelope } from "../../../../routes.js";
+import { RouteEnvelope } from "../../../../routes";
+import { defaultConfig, Req2RankConfig } from "@req2rank/core";
 import {
   consumeGithubOAuthState,
   gcGithubOAuthSessionStore,
   issueGithubOAuthSession,
   issueGithubOAuthState,
   resolveGithubOAuthSession
-} from "../../../../lib/github-oauth-session.js";
+} from "../../../../lib/github-oauth-session";
+import { readCookie } from "../../../../lib/admin-auth";
 
 export interface GithubAuthCallbackInput {
   code: string;
@@ -74,6 +76,16 @@ interface GithubTokenResponse {
 interface GithubUserResponse {
   id: number;
   login: string;
+}
+
+function buildCliConfig(serverUrl: string, token: string): string {
+  const config = JSON.parse(JSON.stringify(defaultConfig)) as Req2RankConfig;
+  config.hub = {
+    enabled: true,
+    serverUrl,
+    token
+  };
+  return JSON.stringify(config, null, 2);
 }
 
 function requireNonEmpty(value: string, field: string): void {
@@ -225,6 +237,35 @@ export async function GET(request: Request): Promise<Response> {
       },
       { status: 200 }
     );
+  }
+
+  if (action === "cli-config") {
+    await gcGithubOAuthSessionStore();
+    const sessionToken = request.headers.get("x-session-token") ?? readCookie(request, "r2r_session") ?? "";
+    const session = await resolveGithubOAuthSession(sessionToken);
+    if (!session) {
+      return Response.json(
+        {
+          ok: false,
+          status: 401,
+          error: {
+            code: "AUTH_ERROR",
+            message: "session not found"
+          }
+        },
+        { status: 401 }
+      );
+    }
+
+    const cliConfig = buildCliConfig(url.origin, sessionToken);
+    return new Response(cliConfig, {
+      status: 200,
+      headers: {
+        "content-type": "application/json; charset=utf-8",
+        "content-disposition": 'attachment; filename="req2rank.config.json"',
+        "cache-control": "no-store"
+      }
+    });
   }
 
   const result = await handleGithubAuthCallback({

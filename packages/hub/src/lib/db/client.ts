@@ -2,9 +2,9 @@ import { and, desc, eq, gt, isNull, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { LeaderboardEntry, LeaderboardQuery, NonceResponse, SubmissionRequest, parseLeaderboardQuery } from "@req2rank/core";
-import { ExtendedLeaderboardQuery, ReverificationJobDetail, SubmissionDetail, SubmissionStore } from "../../routes.js";
-import { LeaderboardAggregationStrategy, resolveLeaderboardStrategy } from "../leaderboard-strategy.js";
-import { calibrationSnapshotsTable, noncesTable, reverificationJobsTable, submissionsTable } from "./schema.js";
+import { ExtendedLeaderboardQuery, ReverificationJobDetail, SubmissionDetail, SubmissionStore } from "../../routes";
+import { LeaderboardAggregationStrategy, resolveLeaderboardStrategy } from "../leaderboard-strategy";
+import { calibrationSnapshotsTable, noncesTable, reverificationJobsTable, submissionsTable } from "./schema";
 
 type LeaderboardRow = {
   model: string;

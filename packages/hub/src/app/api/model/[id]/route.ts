@@ -1,6 +1,6 @@
-import { RouteEnvelope, SubmissionDetail } from "../../../../routes.js";
-import { parseBearerToken } from "../../../../lib/auth.js";
-import { appStore, appValidate } from "../../../state.js";
+import { RouteEnvelope, SubmissionDetail } from "../../../../routes";
+import { parseBearerToken } from "../../../../lib/auth";
+import { appStore, appValidate } from "../../../state";
 
 export interface ModelDetailResponse {
   model: string;

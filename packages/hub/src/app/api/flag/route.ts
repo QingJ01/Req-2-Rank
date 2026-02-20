@@ -1,6 +1,6 @@
-import { FlagSubmissionRequest, ReverificationResponse, RouteEnvelope, createFlagSubmissionHandler } from "../../../routes.js";
-import { parseBearerToken } from "../../../lib/auth.js";
-import { appStore, appValidate } from "../../state.js";
+import { FlagSubmissionRequest, ReverificationResponse, RouteEnvelope, createFlagSubmissionHandler } from "../../../routes";
+import { parseBearerToken } from "../../../lib/auth";
+import { appStore, appValidate } from "../../state";
 
 export interface FlagRouteInput {
   actorId: string;

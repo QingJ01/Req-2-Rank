@@ -1,6 +1,6 @@
-import { NonceRequest, RouteEnvelope, createNonceHandler } from "../../../routes.js";
-import { parseBearerToken } from "../../../lib/auth.js";
-import { appStore, appValidate } from "../../state.js";
+import { NonceRequest, RouteEnvelope, createNonceHandler } from "../../../routes";
+import { parseBearerToken } from "../../../lib/auth";
+import { appStore, appValidate } from "../../state";
 
 export interface NonceRouteInput {
   actorId: string;

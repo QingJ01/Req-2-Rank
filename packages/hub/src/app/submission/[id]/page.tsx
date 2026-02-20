@@ -1,22 +1,21 @@
-import { DimensionBars } from "../../components/dimension-bars.client.js";
-import { TimelinePlayback } from "../../components/timeline-playback.client.js";
-import { statusLabel } from "../../components/viz-utils.js";
-import { resolveLang } from "../../i18n.js";
-import { appStore } from "../../state.js";
-import { SampleCard } from "./sample-card.client.js";
+import { cookies } from "next/headers";
+import { DimensionBars } from "../../components/dimension-bars.client";
+import { TimelinePlayback } from "../../components/timeline-playback.client";
+import { statusLabel } from "../../components/viz-utils";
+import { resolveLang } from "../../i18n";
+import { appStore } from "../../state";
+import { SampleCard } from "./sample-card.client";
+import { t } from "../../locales";
 
 type SubmissionPageProps = {
   params: {
     id: string;
   };
-  searchParams?: {
-    lang?: string;
-  };
 };
 
-export default async function SubmissionPage({ params, searchParams }: SubmissionPageProps) {
-  const lang = resolveLang(searchParams?.lang);
-  const isEn = lang === "en";
+export default async function SubmissionPage({ params }: SubmissionPageProps) {
+  const cookieStore = await cookies();
+  const lang = resolveLang(cookieStore.get("hub.lang")?.value);
   const detail = await appStore.getSubmission(params.id);
   const timeline = detail?.evidenceChain?.timeline ?? [];
   const samples = detail?.evidenceChain?.samples ?? [];
@@ -24,37 +23,37 @@ export default async function SubmissionPage({ params, searchParams }: Submissio
 
   return (
     <section>
-      <h1>{isEn ? "Submission Detail" : "提交详情"}</h1>
+      <h1>{t(lang, "submissionDetail")}</h1>
       {!detail ? (
-        <p className="hub-muted">{isEn ? "Submission not found." : "未找到该提交。"}</p>
+        <p className="hub-muted">{t(lang, "submissionNotFound")}</p>
       ) : (
         <div className="hub-card" style={{ padding: 16, lineHeight: 1.7 }}>
           <div>
-            <strong>{isEn ? "Run ID:" : "运行 ID："}</strong> {detail.runId}
+            <strong>{t(lang, "runId")}</strong> {detail.runId}
           </div>
           <div>
-            <strong>{isEn ? "Model:" : "模型："}</strong> {detail.model}
+            <strong>{t(lang, "modelLabel")}</strong> {detail.model}
           </div>
           <div>
-            <strong>{isEn ? "Score:" : "得分："}</strong> {detail.score.toFixed(1)}
+            <strong>{t(lang, "scoreLabel")}</strong> {detail.score.toFixed(1)}
           </div>
           <div>
-            <strong>{isEn ? "Status:" : "状态："}</strong> {statusLabel(detail.verificationStatus, lang)}
+            <strong>{t(lang, "statusLabel")}</strong> {statusLabel(detail.verificationStatus, lang)}
           </div>
           <div>
-            <strong>{isEn ? "Submitted:" : "提交时间："}</strong> {detail.submittedAt}
+            <strong>{t(lang, "submittedLabel")}</strong> {detail.submittedAt}
           </div>
 
-          <h2>{isEn ? "Dimension Scores" : "维度得分"}</h2>
+          <h2>{t(lang, "dimensionScores")}</h2>
           {!detail.dimensionScores || Object.keys(detail.dimensionScores).length === 0 ? (
-            <div>{isEn ? "Dimension scores unavailable." : "暂无维度得分。"}</div>
+            <div>{t(lang, "dimensionScoresUnavailable")}</div>
           ) : (
             <DimensionBars values={detail.dimensionScores} lang={lang} />
           )}
 
-          <h2>{isEn ? "Evidence Chain" : "证据链"}</h2>
+          <h2>{t(lang, "evidenceChain")}</h2>
           <div>
-            <strong>{isEn ? "Timeline:" : "时间线："}</strong> {isEn ? `${timeline.length} phase(s)` : `${timeline.length} 个阶段`}
+            <strong>{t(lang, "timelineLabel")}</strong> {lang === "en" ? `${timeline.length} phase(s)` : `${timeline.length} 个阶段`}
           </div>
           {timeline.length > 0 && (
             <ul>
@@ -66,7 +65,7 @@ export default async function SubmissionPage({ params, searchParams }: Submissio
             </ul>
           )}
           <div>
-            <strong>{isEn ? "Samples:" : "样本："}</strong> {samples.length}
+            <strong>{t(lang, "samplesLabel")}</strong> {samples.length}
           </div>
           {samples.length > 0 && (
             <div className="hub-grid" style={{ marginTop: 6, marginBottom: 8 }}>
@@ -77,10 +76,10 @@ export default async function SubmissionPage({ params, searchParams }: Submissio
           )}
           {timeline.length > 0 ? <TimelinePlayback submission={detail} lang={lang} /> : null}
           <div>
-            <strong>{isEn ? "Environment:" : "环境："}</strong>{" "}
+            <strong>{t(lang, "envLabel")}</strong>{" "}
             {environment
               ? `${environment.os} / ${environment.nodeVersion} / ${environment.timezone}`
-              : isEn ? "environment unavailable" : "暂无环境信息"}
+              : t(lang, "envUnavailable")}
           </div>
         </div>
       )}

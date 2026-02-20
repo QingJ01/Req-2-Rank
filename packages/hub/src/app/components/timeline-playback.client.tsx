@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import type { Lang } from "../i18n.js";
-import type { SubmissionDetailView } from "./viz-types.js";
+import { useEffect, useRef, useState } from "react";
+import type { Lang } from "../i18n";
+import type { SubmissionDetailView } from "./viz-types";
+import { t } from "../locales";
 
 type TimelinePlaybackProps = {
   submission: SubmissionDetailView;
@@ -11,60 +12,68 @@ type TimelinePlaybackProps = {
 
 export function TimelinePlayback({ submission, lang = "zh" }: TimelinePlaybackProps) {
   const [playbackMs, setPlaybackMs] = useState<number | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const timeline = submission.evidenceChain?.timeline ?? [];
 
-  const durationMs = useMemo(() => {
+  const durationMs = (() => {
     if (timeline.length === 0) {
       return 1;
     }
     const start = new Date(timeline[0].startedAt).getTime();
     const end = new Date(timeline[timeline.length - 1].completedAt).getTime();
     return Math.max(end - start, 1);
-  }, [timeline]);
+  })();
 
   useEffect(() => {
-    if (playbackMs === null) {
-      return;
+    return () => {
+      if (timerRef.current !== null) {
+        clearInterval(timerRef.current);
+      }
+    };
+  }, []);
+
+  function startPlayback() {
+    if (timerRef.current !== null) {
+      clearInterval(timerRef.current);
     }
-    const timer = window.setInterval(() => {
+    setPlaybackMs(0);
+    timerRef.current = setInterval(() => {
       setPlaybackMs((current) => {
         if (current === null) {
           return null;
         }
         const next = current + 120;
         if (next >= durationMs + 500) {
-          window.clearInterval(timer);
+          if (timerRef.current !== null) {
+            clearInterval(timerRef.current);
+            timerRef.current = null;
+          }
           return durationMs + 500;
         }
         return next;
       });
     }, 120);
-
-    return () => window.clearInterval(timer);
-  }, [durationMs, playbackMs]);
+  }
 
   const phaseBase = timeline.length > 0 ? new Date(timeline[0].startedAt).getTime() : 0;
 
-  function phaseLabel(phase: "generate" | "execute" | "evaluate" | "score"): string {
-    if (lang === "en") {
-      return phase;
-    }
-    if (phase === "generate") return "生成";
-    if (phase === "execute") return "执行";
-    if (phase === "evaluate") return "评估";
-    return "评分";
-  }
+  const phaseKeys: Record<string, "phaseGenerate" | "phaseExecute" | "phaseEvaluate" | "phaseScore"> = {
+    generate: "phaseGenerate",
+    execute: "phaseExecute",
+    evaluate: "phaseEvaluate",
+    score: "phaseScore",
+  };
 
   return (
-    <section className="hub-card" style={{ padding: 14 }}>
+    <section className="hub-card hub-card-padded">
       <div className="hub-viz-panel-head">
-        <h3>{lang === "en" ? "Evaluation Playback" : "评测回放"}</h3>
-        <button className="hub-viz-button" onClick={() => setPlaybackMs(0)}>
-          {lang === "en" ? "Replay" : "重新播放"}
+        <h3>{t(lang, "evalPlayback")}</h3>
+        <button className="hub-viz-button" onClick={startPlayback}>
+          {t(lang, "replay")}
         </button>
       </div>
       {timeline.length === 0 ? (
-        <p className="hub-muted">{lang === "en" ? "No timeline data available." : "暂无时间线数据。"}</p>
+        <p className="hub-muted">{t(lang, "noTimeline")}</p>
       ) : (
         <ul className="hub-viz-timeline-list">
           {timeline.map((phase) => {
@@ -76,7 +85,7 @@ export function TimelinePlayback({ submission, lang = "zh" }: TimelinePlaybackPr
 
             return (
               <li key={`${phase.phase}-${phase.startedAt}`} className={className}>
-                <div className="hub-viz-phase-title">{phaseLabel(phase.phase)}</div>
+                <div className="hub-viz-phase-title">{t(lang, phaseKeys[phase.phase] ?? "phaseScore")}</div>
                 <div className="hub-viz-phase-meta">{phase.model}</div>
                 <div className="hub-viz-phase-time">
                   {new Date(phase.startedAt).toLocaleTimeString()} - {new Date(phase.completedAt).toLocaleTimeString()}

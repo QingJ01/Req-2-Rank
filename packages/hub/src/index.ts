@@ -13,5 +13,5 @@ export function normalizeSubmission(input: LeaderboardSubmission): LeaderboardSu
   };
 }
 
-export * from "./routes.js";
-export * from "./lib/auth.js";
+export * from "./routes";
+export * from "./lib/auth";

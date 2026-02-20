@@ -1,4 +1,6 @@
-import { isAdminActor } from "./lib/admin-auth.js";
+import { isAdminActor } from "./lib/admin-auth";
+
+const LANG_COOKIE = "hub.lang";
 
 function readCookie(request: Request, key: string): string | undefined {
   const cookieHeader = request.headers.get("cookie");
@@ -23,6 +25,20 @@ function buildLoginRedirect(url: URL): Response {
   loginUrl.searchParams.set("action", "login");
   loginUrl.searchParams.set("redirect", backTo);
   return Response.redirect(loginUrl, 302);
+}
+
+function resolveLangRedirect(request: Request): Response | undefined {
+  const url = new URL(request.url);
+  if (url.pathname.startsWith("/api/")) {
+    return undefined;
+  }
+  if (url.searchParams.has("lang")) {
+    return undefined;
+  }
+  const stored = readCookie(request, LANG_COOKIE);
+  const lang = stored === "en" ? "en" : "zh";
+  url.searchParams.set("lang", lang);
+  return Response.redirect(url, 302);
 }
 
 export async function resolveAdminGateDecision(
@@ -73,10 +89,14 @@ export async function resolveAdminGateDecision(
   }
 }
 
-export async function middleware(request: Request): Promise<Response | undefined> {
+export async function proxy(request: Request): Promise<Response | undefined> {
+  const langRedirect = resolveLangRedirect(request);
+  if (langRedirect) {
+    return langRedirect;
+  }
   return resolveAdminGateDecision(request);
 }
 
 export const config = {
-  matcher: ["/admin/:path*"]
+  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"]
 };

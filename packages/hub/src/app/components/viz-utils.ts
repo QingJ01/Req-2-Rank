@@ -1,5 +1,5 @@
-import type { Lang } from "../i18n.js";
-import type { ScoreDimension, VerificationStatus } from "./viz-types.js";
+import type { Lang } from "../i18n";
+import type { ScoreDimension, VerificationStatus } from "./viz-types";
 
 export const DIMENSION_KEYS: ScoreDimension[] = [
   "functionalCompleteness",

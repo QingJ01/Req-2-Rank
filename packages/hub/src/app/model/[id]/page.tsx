@@ -1,22 +1,21 @@
-import { CiChart } from "../../components/ci-chart.client.js";
-import { MiniTrend } from "../../components/mini-trend.client.js";
-import { RadarChart } from "../../components/radar-chart.client.js";
-import { DIMENSION_KEYS, safeScore, statusBadgeClass, statusLabel } from "../../components/viz-utils.js";
-import { resolveLang } from "../../i18n.js";
-import { appStore } from "../../state.js";
+import { cookies } from "next/headers";
+import { CiChart } from "../../components/ci-chart.client";
+import { MiniTrend } from "../../components/mini-trend.client";
+import { RadarChart } from "../../components/radar-chart.client";
+import { DIMENSION_KEYS, safeScore, statusBadgeClass, statusLabel } from "../../components/viz-utils";
+import { resolveLang } from "../../i18n";
+import { appStore } from "../../state";
+import { t } from "../../locales";
 
 type ModelPageProps = {
   params: {
     id: string;
   };
-  searchParams?: {
-    lang?: string;
-  };
 };
 
-export default async function ModelPage({ params, searchParams }: ModelPageProps) {
-  const lang = resolveLang(searchParams?.lang);
-  const isEn = lang === "en";
+export default async function ModelPage({ params }: ModelPageProps) {
+  const cookieStore = await cookies();
+  const lang = resolveLang(cookieStore.get("hub.lang")?.value);
   const model = decodeURIComponent(params.id);
   const submissions = await appStore.listModelSubmissions(model);
   const latest = submissions[0];
@@ -30,50 +29,50 @@ export default async function ModelPage({ params, searchParams }: ModelPageProps
 
   return (
     <section>
-      <h1>{isEn ? "Model Detail" : "模型详情"}</h1>
+      <h1>{t(lang, "modelDetail")}</h1>
       <p className="hub-muted">{model}</p>
 
-      <div className="hub-grid cols-2" style={{ marginBottom: 18 }}>
-        <div className="hub-card" style={{ padding: 14 }}>
-          <div className="hub-muted">{isEn ? "Submissions" : "提交次数"}</div>
+      <div className="hub-grid cols-2 hub-mb">
+        <div className="hub-card hub-card-padded">
+          <div className="hub-muted">{t(lang, "submissions")}</div>
           <strong>{submissions.length}</strong>
         </div>
-        <div className="hub-card" style={{ padding: 14 }}>
-          <div className="hub-muted">{isEn ? "Best Score" : "最高分"}</div>
+        <div className="hub-card hub-card-padded">
+          <div className="hub-muted">{t(lang, "bestScore")}</div>
           <strong>
             {submissions.length > 0 ? Math.max(...submissions.map((item) => item.score)).toFixed(1) : "-"}
           </strong>
         </div>
       </div>
 
-      <ul className="hub-grid" style={{ listStyle: "none", padding: 0, margin: 0 }}>
+      <ul className="hub-grid hub-list-reset">
         {submissions.map((item, index) => (
-          <li key={item.runId} className="hub-card" style={{ padding: 12 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
+          <li key={item.runId} className="hub-card hub-card-padded">
+            <div className="hub-flex-between">
               <div>
                 <strong>{item.runId}</strong>
                 <div className="hub-muted">
-                  {isEn ? "score" : "得分"} {item.score.toFixed(1)} · {new Date(item.submittedAt).toLocaleString()}
+                  {t(lang, "score")} {item.score.toFixed(1)} · {new Date(item.submittedAt).toLocaleString()}
                 </div>
               </div>
               <span className={statusBadgeClass(item.verificationStatus)}>{statusLabel(item.verificationStatus, lang)}</span>
             </div>
             <div style={{ marginTop: 8 }}>
-              <MiniTrend points={submissions.slice(index).reverse().map((entry) => entry.score)} />
+              <MiniTrend points={submissions.slice(index).reverse().map((entry) => entry.score)} lang={lang} />
             </div>
           </li>
         ))}
       </ul>
 
-      <div className="hub-grid cols-2" style={{ marginTop: 20 }}>
-        <article className="hub-card" style={{ padding: 12 }}>
-          <h2>{isEn ? "Radar (average dimensions)" : "维度雷达图（平均）"}</h2>
+      <div className="hub-grid cols-2 hub-mt">
+        <article className="hub-card hub-card-padded">
+          <h2>{t(lang, "radarAvgTitle")}</h2>
           <RadarChart values={radarValues} lang={lang} />
-          {latest ? <p className="hub-muted">{isEn ? `Latest run: ${latest.runId}` : `最近一次运行：${latest.runId}`}</p> : null}
+          {latest ? <p className="hub-muted">{lang === "en" ? `Latest run: ${latest.runId}` : `最近一次运行：${latest.runId}`}</p> : null}
         </article>
 
-        <article className="hub-card" style={{ padding: 12 }}>
-          <h2>{isEn ? "Score trend with CI" : "得分趋势与置信区间"}</h2>
+        <article className="hub-card hub-card-padded">
+          <h2>{t(lang, "scoreTrendCi")}</h2>
           <CiChart submissions={submissions} lang={lang} />
           <div className="hub-muted">
             {submissions.slice(0, 3).map((item) => (

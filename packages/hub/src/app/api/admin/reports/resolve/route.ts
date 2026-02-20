@@ -1,6 +1,6 @@
-import { appStore } from "../../../../state.js";
-import { requireAdminActor, validateAdminCsrf } from "../../../../../lib/admin-auth.js";
-import { getCommunityReport, logAdminAction, resolveCommunityReport } from "../../../../../report-store.js";
+import { appStore } from "../../../../state";
+import { requireAdminActor, validateAdminCsrf } from "../../../../../lib/admin-auth";
+import { getCommunityReport, logAdminAction, resolveCommunityReport } from "../../../../../report-store";
 
 interface ResolveReportBody {
   id?: string;

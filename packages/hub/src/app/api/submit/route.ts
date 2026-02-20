@@ -1,7 +1,7 @@
-import { RouteEnvelope, createSubmitHandler } from "../../../routes.js";
+import { RouteEnvelope, createSubmitHandler } from "../../../routes";
 import { SubmissionRequest, SubmissionResponse } from "@req2rank/core";
-import { parseBearerToken } from "../../../lib/auth.js";
-import { appStore, appValidate } from "../../state.js";
+import { parseBearerToken } from "../../../lib/auth";
+import { appStore, appValidate } from "../../state";
 
 export interface SubmitRouteInput {
   actorId: string;

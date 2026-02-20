@@ -1,8 +1,9 @@
 "use client";
 
-import type { SubmissionDetailView } from "./viz-types.js";
-import { safeScore } from "./viz-utils.js";
-import type { Lang } from "../i18n.js";
+import type { SubmissionDetailView } from "./viz-types";
+import { safeScore } from "./viz-utils";
+import type { Lang } from "../i18n";
+import { t } from "../locales";
 
 type CiChartProps = {
   submissions: SubmissionDetailView[];
@@ -26,7 +27,7 @@ export function CiChart({ submissions, lang = "zh" }: CiChartProps) {
     <svg
       viewBox={`0 0 ${width} ${height}`}
       className="hub-viz-ci"
-      aria-label={lang === "en" ? "confidence interval chart" : "置信区间图"}
+      aria-label={t(lang, "ciChartLabel")}
     >
       <line x1={left} y1={bottom} x2={right} y2={bottom} className="hub-viz-axis-line" />
       <line x1={left} y1={top} x2={left} y2={bottom} className="hub-viz-axis-line" />

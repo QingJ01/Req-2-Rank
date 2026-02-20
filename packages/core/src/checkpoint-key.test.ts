@@ -25,4 +25,14 @@ describe("createPipelineCheckpointKey", () => {
     const keyRight = createPipelineCheckpointKey("run", right);
     expect(keyLeft).not.toBe(keyRight);
   });
+
+  it("changes key when target provider protocol changes", () => {
+    const left = cloneConfig();
+    const right = cloneConfig();
+    right.target.provider = "openai-response";
+
+    const keyLeft = createPipelineCheckpointKey("run", left);
+    const keyRight = createPipelineCheckpointKey("run", right);
+    expect(keyLeft).not.toBe(keyRight);
+  });
 });

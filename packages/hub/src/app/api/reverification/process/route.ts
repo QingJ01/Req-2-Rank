@@ -1,5 +1,5 @@
-import { appStore } from "../../../../app/state.js";
-import { processQueuedReverificationJobs } from "../../../../reverification-worker.js";
+import { appStore } from "../../../state";
+import { processQueuedReverificationJobs } from "../../../../reverification-worker";
 
 function canUseAutoMode(request: Request): boolean {
   if (process.env.R2R_REVERIFY_MODE !== "auto") {

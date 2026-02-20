@@ -1,4 +1,4 @@
-import { appStore } from "../../../../state.js";
+import { appStore } from "../../../../state";
 import { readFile } from "node:fs/promises";
 
 interface LiveProgressSnapshot {

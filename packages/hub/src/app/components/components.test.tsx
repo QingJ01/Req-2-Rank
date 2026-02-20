@@ -54,19 +54,16 @@ describe("route helpers", () => {
 });
 
 describe("language helpers", () => {
-  it("prefers query language over stored language", () => {
-    expect(pickLang("en", "zh")).toBe("en");
-    expect(pickLang("zh", "en")).toBe("zh");
+  it("resolves stored language", () => {
+    expect(pickLang("en")).toBe("en");
+    expect(pickLang("zh")).toBe("zh");
   });
 
-  it("falls back to stored language when query missing", () => {
-    expect(pickLang(undefined, "en")).toBe("en");
-    expect(pickLang(null, "zh")).toBe("zh");
-  });
-
-  it("defaults to zh for invalid language values", () => {
-    expect(pickLang(undefined, "fr")).toBe("zh");
-    expect(pickLang("de", "en")).toBe("en");
+  it("defaults to zh when stored language is missing or invalid", () => {
+    expect(pickLang(undefined)).toBe("zh");
+    expect(pickLang(null)).toBe("zh");
+    expect(pickLang("fr")).toBe("zh");
+    expect(pickLang("de")).toBe("zh");
   });
 });
 

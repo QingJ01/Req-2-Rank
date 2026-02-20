@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { resolveAdminGateDecision } from "./middleware.js";
+import { resolveAdminGateDecision } from "./proxy.js";
 
 describe("admin middleware gate", () => {
   it("redirects to login when session cookie is missing", async () => {

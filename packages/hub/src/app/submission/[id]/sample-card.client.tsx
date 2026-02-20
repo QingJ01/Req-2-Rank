@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import type { Lang } from "../../i18n.js";
+import type { Lang } from "../../i18n";
+import { t } from "../../locales";
 
 type Sample = {
   roundIndex: number;
@@ -27,7 +28,6 @@ function detectLanguage(code: string): string {
 }
 
 export function SampleCard({ sample, lang = "zh" }: { sample: Sample; lang?: Lang }) {
-  const isEn = lang === "en";
   const [copied, setCopied] = useState(false);
   const language = detectLanguage(sample.codeSubmission);
 
@@ -45,16 +45,16 @@ export function SampleCard({ sample, lang = "zh" }: { sample: Sample; lang?: Lan
 
   return (
     <details className="sample-shell">
-      <summary style={{ cursor: "pointer", fontWeight: 600 }}>{isEn ? `Sample ${sample.roundIndex}` : `样本 ${sample.roundIndex}`}</summary>
+      <summary style={{ cursor: "pointer", fontWeight: 600 }}>{lang === "en" ? `Sample ${sample.roundIndex}` : `样本 ${sample.roundIndex}`}</summary>
       <div>
-        <strong>{isEn ? "Requirement" : "需求"}</strong>
+        <strong>{t(lang, "requirement")}</strong>
         <pre className="sample-pre">
           {sample.requirement}
         </pre>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-          <strong>{isEn ? "Code Submission" : "提交代码"}</strong>
+        <div className="hub-flex-between">
+          <strong>{t(lang, "codeSubmission")}</strong>
           <button type="button" onClick={handleCopy} className="sample-button">
-            {copied ? (isEn ? "Copied" : "已复制") : (isEn ? "Copy code" : "复制代码")}
+            {copied ? t(lang, "copied") : t(lang, "copyCode")}
           </button>
         </div>
         <pre

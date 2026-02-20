@@ -6,7 +6,7 @@ import {
   SubmissionResponse,
   parseLeaderboardQuery
 } from "@req2rank/core";
-import { LeaderboardAggregationStrategy, resolveLeaderboardStrategy } from "./lib/leaderboard-strategy.js";
+import { LeaderboardAggregationStrategy, resolveLeaderboardStrategy } from "./lib/leaderboard-strategy";
 
 export interface NonceRequest {
   userId: string;

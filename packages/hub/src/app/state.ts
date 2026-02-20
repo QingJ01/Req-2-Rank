@@ -1,6 +1,6 @@
-import { SubmissionStore, ValidationHook, createSubmissionStore } from "../routes.js";
-import { createEnvAuthValidator } from "../lib/auth.js";
-import { createDrizzleSubmissionStore } from "../lib/db/client.js";
+import { SubmissionStore, ValidationHook, createSubmissionStore } from "../routes";
+import { createEnvAuthValidator } from "../lib/auth";
+import { createDrizzleSubmissionStore } from "../lib/db/client";
 
 let _store: SubmissionStore | undefined;
 let _validate: ValidationHook | undefined;

@@ -1,5 +1,5 @@
-import { ValidationHook, createAuthValidator } from "../routes.js";
-import { resolveGithubOAuthSession } from "./github-oauth-session.js";
+import { ValidationHook, createAuthValidator } from "../routes";
+import { resolveGithubOAuthSession } from "./github-oauth-session";
 
 export interface HeaderMap {
   authorization?: string;

@@ -1,7 +1,7 @@
 "use client";
 
-import type { Lang } from "../i18n.js";
-import { getDimensions, safeScore } from "./viz-utils.js";
+import type { Lang } from "../i18n";
+import { getDimensions, safeScore } from "./viz-utils";
 
 type DimensionBarsProps = {
   values: Record<string, number>;

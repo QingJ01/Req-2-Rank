@@ -1,4 +1,4 @@
-import { listCommunityReports, submitCommunityReport } from "../../../report-store.js";
+import { listCommunityReports, submitCommunityReport } from "../../../report-store";
 
 export async function POST(request: Request): Promise<Response> {
   const payload = (await request.json()) as { runId?: string; reason?: string; details?: string };

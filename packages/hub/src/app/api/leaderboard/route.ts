@@ -1,7 +1,7 @@
-import { ExtendedLeaderboardQuery, RouteEnvelope, createLeaderboardHandler } from "../../../routes.js";
+import { ExtendedLeaderboardQuery, RouteEnvelope, createLeaderboardHandler } from "../../../routes";
 import { LeaderboardEntry } from "@req2rank/core";
-import { parseBearerToken } from "../../../lib/auth.js";
-import { appStore, appValidate } from "../../state.js";
+import { parseBearerToken } from "../../../lib/auth";
+import { appStore, appValidate } from "../../state";
 
 export interface LeaderboardRouteInput {
   actorId: string;

@@ -2,7 +2,7 @@
 
 ## 当前生产环境
 
-- 基础地址：`https://r2r.byebug.cn`
+- 基础地址：`https://req2rank.top`
 - 部署平台：Vercel
 - 数据库：PostgreSQL（`r2r`）
 
@@ -57,7 +57,7 @@
 
 ## OAuth 回调检查清单
 
-1. 在 Vercel 中将 `R2R_GITHUB_REDIRECT_URI` 设为 `https://r2r.byebug.cn/api/auth/github`。
+1. 在 Vercel 中将 `R2R_GITHUB_REDIRECT_URI` 设为 `https://req2rank.top/api/auth/github`。
 2. 在 GitHub OAuth App 设置中填写同一个 Callback URL。
 3. 更新环境变量后重新部署。
 4. 验证 `GET /api/auth/github?action=login` 返回的 `authUrl` 中 `redirect_uri` 与上述地址一致。
@@ -83,9 +83,9 @@
 
 每次生产部署后执行以下检查：
 
-1. `GET https://r2r.byebug.cn/` 能渲染排行榜页面。
-2. `GET https://r2r.byebug.cn/api/public/leaderboard` 返回 `200`。
-3. `GET https://r2r.byebug.cn/api/auth/github?action=login` 返回 `200` 且包含 `authUrl`。
-4. 不带 Bearer Token 请求 `GET https://r2r.byebug.cn/api/leaderboard` 返回 `401`。
+1. `GET https://req2rank.top/` 能渲染排行榜页面。
+2. `GET https://req2rank.top/api/public/leaderboard` 返回 `200`。
+3. `GET https://req2rank.top/api/auth/github?action=login` 返回 `200` 且包含 `authUrl`。
+4. 不带 Bearer Token 请求 `GET https://req2rank.top/api/leaderboard` 返回 `401`。
 5. 使用 `x-reverify-secret` 触发 `/api/reverification/process`，确认复验流程可执行。
 6. 同一 actor 连续提交到上限后，确认第 21 次被拒绝。

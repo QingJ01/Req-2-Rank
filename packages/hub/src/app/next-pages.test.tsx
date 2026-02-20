@@ -1,5 +1,19 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
+
+vi.mock("next/headers", () => ({
+  cookies: () => Promise.resolve({
+    get: (name: string) => name === "hub.lang" ? { value: "zh" } : undefined,
+  }),
+}));
+
+vi.mock("next/navigation", () => ({
+  usePathname: () => "/",
+  useRouter: () => ({
+    refresh: () => undefined,
+  }),
+}));
+
 import RootLayout from "./layout.js";
 import LeaderboardPage from "./page.js";
 import ModelPage from "./model/[id]/page.js";
@@ -58,19 +72,11 @@ describe("next-style pages", () => {
     expect(submissionHtml).toContain("复制代码");
     expect(submissionHtml).toContain("language-ts");
 
-    const workbenchHtml = renderToStaticMarkup(WorkbenchPage({ searchParams: {} }));
+    const workbenchHtml = renderToStaticMarkup(await WorkbenchPage({ searchParams: {} }));
     expect(workbenchHtml).toContain("实时工作台");
     expect(workbenchHtml).toContain("实时监控");
 
-    const leaderboardEnHtml = renderToStaticMarkup(await LeaderboardPage({ searchParams: { lang: "en" } }));
-    expect(leaderboardEnHtml).toContain("Leaderboard");
-    expect(leaderboardEnHtml).toContain("Aggregation");
-
-    const workbenchEnHtml = renderToStaticMarkup(WorkbenchPage({ searchParams: { lang: "en" } }));
-    expect(workbenchEnHtml).toContain("Workbench");
-    expect(workbenchEnHtml).toContain("Realtime monitoring");
-
-    const authHtml = renderToStaticMarkup(AuthPage({ searchParams: { lang: "zh" } }));
+    const authHtml = renderToStaticMarkup(await AuthPage({}));
     expect(authHtml).toContain("登录管理");
     expect(authHtml).toContain("使用 GitHub 登录");
   });

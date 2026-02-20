@@ -1,20 +1,21 @@
-import { LiveMonitor } from "../components/live-monitor.client.js";
-import { resolveLang } from "../i18n.js";
+import { cookies } from "next/headers";
+import { LiveMonitor } from "../components/live-monitor.client";
+import { resolveLang } from "../i18n";
+import { t } from "../locales";
 
 type WorkbenchPageProps = {
   searchParams?: {
     model?: string;
-    lang?: string;
   };
 };
 
-export default function WorkbenchPage({ searchParams }: WorkbenchPageProps) {
-  const lang = resolveLang(searchParams?.lang);
-  const isEn = lang === "en";
+export default async function WorkbenchPage({ searchParams }: WorkbenchPageProps) {
+  const cookieStore = await cookies();
+  const lang = resolveLang(cookieStore.get("hub.lang")?.value);
   return (
     <section>
-      <h1>{isEn ? "Workbench" : "实时工作台"}</h1>
-      <p className="hub-muted">{isEn ? "Realtime monitoring for leaderboard updates, pipeline events, and timeline playback." : "实时监控排行榜更新、流水线事件与时间线回放。"}</p>
+      <h1>{t(lang, "workbenchTitle")}</h1>
+      <p className="hub-muted">{t(lang, "workbenchDesc")}</p>
       <LiveMonitor initialModel={searchParams?.model} lang={lang} />
     </section>
   );

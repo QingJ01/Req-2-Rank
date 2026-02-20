@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { GET, handleGithubAuthCallback, startGithubAuthLogin } from "./route.js";
+import { issueGithubOAuthSession } from "../../../../lib/github-oauth-session.js";
 
 describe("github auth callback route", () => {
   afterEach(() => {
@@ -137,5 +138,35 @@ describe("github auth callback route", () => {
       actorIdHint: "user-1"
     });
     expect(badCallback.ok).toBe(false);
+  });
+
+  it("returns 401 for cli-config when session is missing", async () => {
+    const response = await GET(new Request("http://localhost/api/auth/github?action=cli-config"));
+    expect(response.status).toBe(401);
+  });
+
+  it("downloads req2rank.config.json with hub token after login", async () => {
+    const sessionToken = await issueGithubOAuthSession({
+      actorId: "user-download",
+      accessToken: "gho_for_download"
+    });
+
+    const response = await GET(
+      new Request("http://localhost/api/auth/github?action=cli-config", {
+        headers: {
+          cookie: `r2r_session=${sessionToken}`
+        }
+      })
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-disposition")).toContain("req2rank.config.json");
+
+    const body = JSON.parse(await response.text()) as {
+      hub?: { enabled?: boolean; serverUrl?: string; token?: string };
+    };
+    expect(body.hub?.enabled).toBe(true);
+    expect(body.hub?.serverUrl).toBe("http://localhost");
+    expect(body.hub?.token).toBe(sessionToken);
   });
 });
