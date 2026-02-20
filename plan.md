@@ -888,7 +888,7 @@ Round 3: 生成需求C → 写代码 → 评审 → 得分
 - [x] 社区举报 + 管理后台
 - [x] 公开 API（第三方可集成）
 - [x] 文档站 (VitePress)
-- [ ] npm 包发布（待 CLI 解除 private 并发布） + GitHub Actions CI/CD
+- [ ] npm 包发布（CI/CD 已就绪，待配置 NPM_TOKEN 并触发 release workflow）
 - [x] 难度自适应校准（基于历史评测数据）
 
 ---
