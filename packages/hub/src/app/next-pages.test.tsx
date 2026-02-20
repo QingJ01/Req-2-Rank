@@ -4,6 +4,7 @@ import RootLayout from "./layout.js";
 import LeaderboardPage from "./page.js";
 import ModelPage from "./model/[id]/page.js";
 import SubmissionPage from "./submission/[id]/page.js";
+import WorkbenchPage from "./workbench/page.js";
 import { appStore } from "./state.js";
 
 describe("next-style pages", () => {
@@ -32,6 +33,7 @@ describe("next-style pages", () => {
     const html = renderToStaticMarkup(await RootLayout({ children: <div>child</div> }));
 
     expect(html).toContain("Req2Rank Hub");
+    expect(html).toContain("Workbench");
     expect(html).toContain("Models");
     expect(html).toContain("openai%2Fgpt-4o-mini");
     expect(html).toContain("child");
@@ -54,5 +56,9 @@ describe("next-style pages", () => {
     expect(submissionHtml).toContain("Code Submission");
     expect(submissionHtml).toContain("Copy code");
     expect(submissionHtml).toContain("language-ts");
+
+    const workbenchHtml = renderToStaticMarkup(WorkbenchPage({ searchParams: {} }));
+    expect(workbenchHtml).toContain("Workbench");
+    expect(workbenchHtml).toContain("Realtime monitoring");
   });
 });

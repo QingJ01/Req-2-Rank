@@ -19,6 +19,7 @@ export default async function RootLayout({ children }: RootLayoutProps) {
               <a href="/">
                 Leaderboard
               </a>
+              <a href="/workbench">Workbench</a>
               <span className="hub-muted">Models</span>
               {topModels.map((item) => (
                 <a key={item.model} href={`/model/${encodeURIComponent(item.model)}`}>

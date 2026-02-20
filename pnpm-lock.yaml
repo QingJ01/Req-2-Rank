@@ -95,31 +95,6 @@ importers:
         specifier: ^2.1.8
         version: 2.1.9(@types/node@22.19.11)
 
-  packages/web-ui:
-    dependencies:
-      react:
-        specifier: ^19.2.4
-        version: 19.2.4
-      react-dom:
-        specifier: ^19.2.4
-        version: 19.2.4(react@19.2.4)
-    devDependencies:
-      '@types/react':
-        specifier: ^19.2.14
-        version: 19.2.14
-      '@types/react-dom':
-        specifier: ^19.2.3
-        version: 19.2.3(@types/react@19.2.14)
-      typescript:
-        specifier: ^5.9.3
-        version: 5.9.3
-      vite:
-        specifier: ^5.4.21
-        version: 5.4.21(@types/node@22.19.11)
-      vitest:
-        specifier: ^2.1.8
-        version: 2.1.9(@types/node@22.19.11)
-
 packages:
 
   '@algolia/abtesting@1.15.0':

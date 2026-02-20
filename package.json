@@ -11,8 +11,6 @@
     "check": "pnpm check:baseline && pnpm check:cli-doc-sync",
     "check:baseline": "node scripts/check-repo-baseline.mjs",
     "check:cli-doc-sync": "pnpm --filter @req2rank/cli build && node scripts/check-cli-readme-sync.mjs",
-    "web:dev": "pnpm --filter @req2rank/web-ui dev",
-    "web:build": "pnpm --filter @req2rank/web-ui build",
     "docs:dev": "pnpm --dir docs/site dev",
     "docs:build": "pnpm --dir docs/site build"
   }

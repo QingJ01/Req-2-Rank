@@ -1,3 +1,7 @@
+import { CiChart } from "../../components/ci-chart.client.js";
+import { MiniTrend } from "../../components/mini-trend.client.js";
+import { RadarChart } from "../../components/radar-chart.client.js";
+import { DIMENSIONS, safeScore, statusBadgeClass } from "../../components/viz-utils.js";
 import { appStore } from "../../state.js";
 
 type ModelPageProps = {
@@ -10,27 +14,13 @@ export default async function ModelPage({ params }: ModelPageProps) {
   const model = decodeURIComponent(params.id);
   const submissions = await appStore.listModelSubmissions(model);
   const latest = submissions[0];
-  const dimensions = ["functionalCompleteness", "codeQuality", "logicAccuracy", "security", "engineeringPractice"] as const;
-  const radarPoints = dimensions
-    .map((dimension, index) => {
-      const angle = (Math.PI * 2 * index) / dimensions.length - Math.PI / 2;
-      const value = latest?.dimensionScores?.[dimension] ?? 0;
-      const radius = 45 + value * 0.55;
-      const x = 120 + Math.cos(angle) * radius;
-      const y = 120 + Math.sin(angle) * radius;
-      return `${x},${y}`;
+  const radarValues = Object.fromEntries(
+    DIMENSIONS.map((dimension) => {
+      const values = submissions.map((item) => safeScore(item.dimensionScores[dimension.key]));
+      const average = values.length > 0 ? values.reduce((sum, value) => sum + value, 0) / values.length : 0;
+      return [dimension.key, average];
     })
-    .join(" ");
-
-  const trendPoints = submissions
-    .slice()
-    .reverse()
-    .map((item, index, list) => {
-      const x = list.length <= 1 ? 10 : 10 + (index * 220) / (list.length - 1);
-      const y = 120 - item.score;
-      return `${x},${y}`;
-    })
-    .join(" ");
+  );
 
   return (
     <section>
@@ -51,11 +41,19 @@ export default async function ModelPage({ params }: ModelPageProps) {
       </div>
 
       <ul className="hub-grid" style={{ listStyle: "none", padding: 0, margin: 0 }}>
-        {submissions.map((item) => (
+        {submissions.map((item, index) => (
           <li key={item.runId} className="hub-card" style={{ padding: 12 }}>
-            <strong>{item.runId}</strong>
-            <div className="hub-muted">
-              score {item.score.toFixed(1)} · status {item.verificationStatus} · {item.submittedAt}
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
+              <div>
+                <strong>{item.runId}</strong>
+                <div className="hub-muted">
+                  score {item.score.toFixed(1)} · {new Date(item.submittedAt).toLocaleString()}
+                </div>
+              </div>
+              <span className={statusBadgeClass(item.verificationStatus)}>{item.verificationStatus}</span>
+            </div>
+            <div style={{ marginTop: 8 }}>
+              <MiniTrend points={submissions.slice(index).reverse().map((entry) => entry.score)} />
             </div>
           </li>
         ))}
@@ -63,19 +61,14 @@ export default async function ModelPage({ params }: ModelPageProps) {
 
       <div className="hub-grid cols-2" style={{ marginTop: 20 }}>
         <article className="hub-card" style={{ padding: 12 }}>
-          <h2>Radar (latest dimensions)</h2>
-          <svg width="240" height="240" viewBox="0 0 240 240" role="img" aria-label="dimension radar">
-            <circle cx="120" cy="120" r="95" fill="none" stroke="rgba(31,36,48,0.12)" />
-            <polygon points={radarPoints} fill="rgba(57,112,196,0.35)" stroke="#2b5da9" strokeWidth="2" />
-          </svg>
+          <h2>Radar (average dimensions)</h2>
+          <RadarChart values={radarValues} />
+          {latest ? <p className="hub-muted">Latest run: {latest.runId}</p> : null}
         </article>
 
         <article className="hub-card" style={{ padding: 12 }}>
           <h2>Score trend with CI</h2>
-          <svg width="240" height="140" viewBox="0 0 240 140" role="img" aria-label="score trend">
-            <line x1="10" y1="120" x2="230" y2="120" stroke="rgba(31,36,48,0.2)" />
-            <polyline fill="none" stroke="#2b5da9" strokeWidth="2" points={trendPoints} />
-          </svg>
+          <CiChart submissions={submissions} />
           <div className="hub-muted">
             {submissions.slice(0, 3).map((item) => (
               <div key={`${item.runId}-ci`}>{item.runId}: CI95 [{item.ci95[0].toFixed(1)}, {item.ci95[1].toFixed(1)}]</div>

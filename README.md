@@ -6,8 +6,7 @@ Req-2-Rank 是一个面向代码模型评测的开源基准框架，支持动态
 
 - `packages/core`：评测流水线引擎、评分逻辑、持久化与模型 Provider 适配层。
 - `packages/cli`：`req2rank` 命令行工具实现。
-- `packages/hub`：基于 Next.js 的排行榜中枢（API + Web 页面）。
-- `packages/web-ui`：本地评测可视化界面。
+- `packages/hub`：基于 Next.js 的排行榜中枢（API + Web 页面，内置可视化 Workbench）。
 - `docs/site`：VitePress 文档站。
 - `examples`：示例配置文件。
 

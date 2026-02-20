@@ -1,3 +1,5 @@
+import { DimensionBars } from "../../components/dimension-bars.client.js";
+import { TimelinePlayback } from "../../components/timeline-playback.client.js";
 import { appStore } from "../../state.js";
 import { SampleCard } from "./sample-card.client.js";
 
@@ -9,7 +11,6 @@ type SubmissionPageProps = {
 
 export default async function SubmissionPage({ params }: SubmissionPageProps) {
   const detail = await appStore.getSubmission(params.id);
-  const dimensions = detail?.dimensionScores ? Object.entries(detail.dimensionScores) : [];
   const timeline = detail?.evidenceChain?.timeline ?? [];
   const samples = detail?.evidenceChain?.samples ?? [];
   const environment = detail?.evidenceChain?.environment;
@@ -38,16 +39,10 @@ export default async function SubmissionPage({ params }: SubmissionPageProps) {
           </div>
 
           <h2>Dimension Scores</h2>
-          {dimensions.length === 0 ? (
+          {!detail.dimensionScores || Object.keys(detail.dimensionScores).length === 0 ? (
             <div>Dimension scores unavailable.</div>
           ) : (
-            <ul style={{ marginTop: 0, marginBottom: 0 }}>
-              {dimensions.map(([key, value]) => (
-                <li key={key}>
-                  {key}: {value.toFixed(1)}
-                </li>
-              ))}
-            </ul>
+            <DimensionBars values={detail.dimensionScores} />
           )}
 
           <h2>Evidence Chain</h2>
@@ -73,6 +68,7 @@ export default async function SubmissionPage({ params }: SubmissionPageProps) {
               ))}
             </div>
           )}
+          {timeline.length > 0 ? <TimelinePlayback submission={detail} /> : null}
           <div>
             <strong>Environment:</strong>{" "}
             {environment

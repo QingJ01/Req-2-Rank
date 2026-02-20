@@ -20,7 +20,7 @@ List alternatives and why they are less suitable.
 
 ## Scope
 
-- Affected package(s): `core` / `cli` / `hub` / `web-ui` / docs
+- Affected package(s): `core` / `cli` / `hub` / docs
 - Breaking change: yes/no
 
 ## Acceptance Criteria
