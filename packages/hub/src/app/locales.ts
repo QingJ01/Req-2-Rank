@@ -41,12 +41,13 @@ const zh = {
 
     // ── Auth Page ──
     authTitle: "登录管理",
-    authDesc: "使用 GitHub OAuth 登录后可访问管理员审核能力。",
+    authDesc: "使用 GitHub OAuth 登录后可管理你的会话与配置。",
     loginWithGithub: "使用 GitHub 登录",
     logoutAction: "退出登录",
     downloadCliConfig: "下载 req2rank.config.json",
     authLoggedInAs: "当前账号",
-    authLoggedInHint: "登录成功，可下载配置文件或前往管理后台。",
+    authLoggedInHint: "登录成功，可下载配置文件。",
+    authForbiddenAdmin: "当前账号不具备访问权限，请使用普通用户页面。",
     hubConfigHint: "登录后可一键下载已启用 Hub 的配置文件（已写入当前登录令牌）。",
     adminAccount: "管理员账号：QingJ01",
 
@@ -180,12 +181,13 @@ const en: Record<keyof typeof zh, string> = {
     logout: "Logout",
 
     authTitle: "Authentication",
-    authDesc: "Use GitHub OAuth to access admin moderation functions.",
+    authDesc: "Use GitHub OAuth to manage your session and configuration.",
     loginWithGithub: "Login with GitHub",
     logoutAction: "Logout",
     downloadCliConfig: "Download req2rank.config.json",
     authLoggedInAs: "Current account",
-    authLoggedInHint: "Login succeeded. You can download config or open admin dashboard.",
+    authLoggedInHint: "Login succeeded. You can download your config.",
+    authForbiddenAdmin: "Your account does not have access to admin pages. Please use the user page.",
     hubConfigHint: "After login, download a Hub-enabled config file with your current login token.",
     adminAccount: "Admin account: QingJ01",
 

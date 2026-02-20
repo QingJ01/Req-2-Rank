@@ -3,10 +3,16 @@ import { GET, handleGithubAuthCallback, startGithubAuthLogin } from "./route.js"
 import { issueGithubOAuthSession } from "../../../../lib/github-oauth-session.js";
 
 describe("github auth callback route", () => {
+  const env = process.env as Record<string, string | undefined>;
+  const originalNodeEnv = process.env.NODE_ENV;
+  const originalCookieSecure = process.env.R2R_COOKIE_SECURE;
+
   afterEach(() => {
     vi.unstubAllGlobals();
     delete process.env.R2R_GITHUB_CLIENT_ID;
     delete process.env.R2R_GITHUB_CLIENT_SECRET;
+    env.NODE_ENV = originalNodeEnv;
+    env.R2R_COOKIE_SECURE = originalCookieSecure;
   });
 
   it("exchanges code with GitHub and returns normalized session payload", async () => {
@@ -84,8 +90,34 @@ describe("github auth callback route", () => {
 
     const response = await GET(new Request("http://localhost/api/auth/github?code=oauth-code-2"));
     expect(response.status).toBe(302);
-    expect(response.headers.get("location")).toContain("/admin");
+    expect(response.headers.get("location")).toContain("/auth");
     expect(response.headers.get("set-cookie")).toContain("r2r_session=");
+  });
+
+  it("falls back to /auth when non-admin callback asks for /admin", async () => {
+    process.env.R2R_GITHUB_CLIENT_ID = "client-id-1";
+    process.env.R2R_GITHUB_CLIENT_SECRET = "client-secret-1";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("github.com/login/oauth/access_token")) {
+          return new Response(JSON.stringify({ access_token: "gho_user_token", token_type: "bearer" }), {
+            status: 200,
+            headers: { "content-type": "application/json" }
+          });
+        }
+
+        return new Response(JSON.stringify({ id: 456, login: "normal-user" }), {
+          status: 200,
+          headers: { "content-type": "application/json" }
+        });
+      })
+    );
+
+    const response = await GET(new Request("http://localhost/api/auth/github?code=oauth-code-4&redirect=%2Fadmin%3Flang%3Dzh"));
+    expect(response.status).toBe(302);
+    expect(response.headers.get("location")).toContain("/auth");
   });
 
   it("supports logout action and clears session cookie", async () => {
@@ -93,6 +125,35 @@ describe("github auth callback route", () => {
     expect(response.status).toBe(302);
     expect(response.headers.get("location")).toContain("/auth");
     expect(response.headers.get("set-cookie")).toContain("r2r_session=");
+  });
+
+  it("sets Secure on auth cookies when secure cookies are enabled", async () => {
+    process.env.R2R_COOKIE_SECURE = "true";
+    process.env.R2R_GITHUB_CLIENT_ID = "client-id-1";
+    process.env.R2R_GITHUB_CLIENT_SECRET = "client-secret-1";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("github.com/login/oauth/access_token")) {
+          return new Response(JSON.stringify({ access_token: "gho_real_token_http", token_type: "bearer" }), {
+            status: 200,
+            headers: { "content-type": "application/json" }
+          });
+        }
+
+        return new Response(JSON.stringify({ id: 123, login: "github-user" }), {
+          status: 200,
+          headers: { "content-type": "application/json" }
+        });
+      })
+    );
+
+    const callbackResponse = await GET(new Request("http://localhost/api/auth/github?code=oauth-code-secure"));
+    expect(callbackResponse.headers.get("set-cookie")).toContain("Secure");
+
+    const logoutResponse = await GET(new Request("http://localhost/api/auth/github?action=logout&redirect=/auth"));
+    expect(logoutResponse.headers.get("set-cookie")).toContain("Secure");
   });
 
   it("creates login state and validates callback state", async () => {

@@ -24,7 +24,11 @@ export function createCsrfToken(): string {
 }
 
 export function csrfCookieHeader(token: string): string {
-  return `${ADMIN_CSRF_COOKIE}=${encodeURIComponent(token)}; Path=/; SameSite=Strict`;
+  const segments = [`${ADMIN_CSRF_COOKIE}=${encodeURIComponent(token)}`, "Path=/", "SameSite=Strict"];
+  if (process.env.R2R_COOKIE_SECURE === "true" || process.env.NODE_ENV === "production") {
+    segments.push("Secure");
+  }
+  return segments.join("; ");
 }
 
 export function resolveCsrfCookieToken(request: Request): string | undefined {

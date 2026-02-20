@@ -27,6 +27,14 @@ function buildLoginRedirect(url: URL): Response {
   return Response.redirect(loginUrl, 302);
 }
 
+function buildForbiddenRedirect(url: URL): Response {
+  const location = new URL("/auth", url.origin);
+  location.searchParams.set("forbidden", "admin");
+  const lang = url.searchParams.get("lang") ?? "zh";
+  location.searchParams.set("lang", lang === "en" ? "en" : "zh");
+  return Response.redirect(location, 302);
+}
+
 function resolveLangRedirect(request: Request): Response | undefined {
   const url = new URL(request.url);
   if (url.pathname.startsWith("/api/")) {
@@ -79,8 +87,12 @@ export async function resolveAdminGateDecision(
     };
 
     const actorId = payload.data?.actorId;
-    if (!payload.ok || !actorId || !isAdminActor(actorId)) {
+    if (!payload.ok || !actorId) {
       return buildLoginRedirect(url);
+    }
+
+    if (!isAdminActor(actorId)) {
+      return buildForbiddenRedirect(url);
     }
 
     return undefined;

@@ -12,10 +12,7 @@ type SessionPayload = {
 };
 
 export function resolveActorLandingPath(actorId?: string): string {
-  if (!actorId) {
-    return "/auth";
-  }
-  return actorId.toLowerCase() === "qingj01" ? "/admin" : "/auth";
+  return "/auth";
 }
 
 export function AuthStatusClient() {

@@ -6,6 +6,7 @@ import { resolveGithubOAuthSession } from "../../lib/github-oauth-session";
 type AuthPageProps = {
   searchParams?: {
     error?: string;
+    forbidden?: string;
   };
 };
 
@@ -13,6 +14,7 @@ export default async function AuthPage({ searchParams }: AuthPageProps) {
   const cookieStore = await cookies();
   const lang = resolveLang(cookieStore.get("hub.lang")?.value);
   const error = searchParams?.error;
+  const forbidden = searchParams?.forbidden;
   const sessionToken = cookieStore.get("r2r_session")?.value;
   const session = sessionToken ? await resolveGithubOAuthSession(sessionToken) : undefined;
 
@@ -21,6 +23,7 @@ export default async function AuthPage({ searchParams }: AuthPageProps) {
       <h1>{t(lang, "authTitle")}</h1>
       <p className="hub-muted">{t(lang, "authDesc")}</p>
       {error ? <p className="hub-muted">{lang === "en" ? `Login failed: ${error}` : `登录失败：${error}`}</p> : null}
+      {forbidden === "admin" ? <p className="hub-muted">{t(lang, "authForbiddenAdmin")}</p> : null}
       {session ? (
         <p className="hub-muted">
           {t(lang, "authLoggedInAs")}: {session.actorId} · {t(lang, "authLoggedInHint")}
@@ -42,7 +45,6 @@ export default async function AuthPage({ searchParams }: AuthPageProps) {
         ) : null}
       </div>
       {session ? <p className="hub-muted hub-mt">{t(lang, "hubConfigHint")}</p> : null}
-      <p className="hub-muted hub-mt">{t(lang, "adminAccount")}</p>
     </section>
   );
 }

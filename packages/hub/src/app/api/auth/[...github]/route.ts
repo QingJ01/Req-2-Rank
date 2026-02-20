@@ -7,7 +7,7 @@ import {
   issueGithubOAuthState,
   resolveGithubOAuthSession
 } from "../../../../lib/github-oauth-session";
-import { readCookie } from "../../../../lib/admin-auth";
+import { isAdminActor, readCookie } from "../../../../lib/admin-auth";
 
 export interface GithubAuthCallbackInput {
   code: string;
@@ -76,6 +76,21 @@ interface GithubTokenResponse {
 interface GithubUserResponse {
   id: number;
   login: string;
+}
+
+function shouldUseSecureCookies(): boolean {
+  return process.env.R2R_COOKIE_SECURE === "true" || process.env.NODE_ENV === "production";
+}
+
+function sessionCookieHeader(token: string, maxAge?: number): string {
+  const segments = [`r2r_session=${encodeURIComponent(token)}`, "Path=/", "HttpOnly", "SameSite=Lax"];
+  if (typeof maxAge === "number") {
+    segments.push(`Max-Age=${maxAge}`);
+  }
+  if (shouldUseSecureCookies()) {
+    segments.push("Secure");
+  }
+  return segments.join("; ");
 }
 
 function buildCliConfig(serverUrl: string, token: string): string {
@@ -190,7 +205,7 @@ export async function GET(request: Request): Promise<Response> {
 
     const headers = new Headers();
     headers.set("location", location.toString());
-    headers.set("set-cookie", "r2r_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0");
+    headers.set("set-cookie", sessionCookieHeader("", 0));
     return new Response(null, { status: 302, headers });
   }
 
@@ -304,14 +319,27 @@ export async function GET(request: Request): Promise<Response> {
     });
   }
 
-  const redirect = url.searchParams.get("redirect") ?? "/admin";
-  const location = new URL(redirect, url.origin);
+  const requestedRedirect = url.searchParams.get("redirect") ?? "/auth";
+  let safeRedirectPath = "/auth";
+  try {
+    const requestedLocation = new URL(requestedRedirect, url.origin);
+    if (requestedLocation.origin === url.origin) {
+      const isAdminPath = requestedLocation.pathname.startsWith("/admin");
+      if (!isAdminPath || isAdminActor(result.data.actorId)) {
+        safeRedirectPath = `${requestedLocation.pathname}${requestedLocation.search}${requestedLocation.hash}`;
+      }
+    }
+  } catch {
+    safeRedirectPath = "/auth";
+  }
+
+  const location = new URL(safeRedirectPath, url.origin);
   if (!location.searchParams.has("lang")) {
     location.searchParams.set("lang", "zh");
   }
 
   const headers = new Headers();
   headers.set("location", location.toString());
-  headers.set("set-cookie", `r2r_session=${result.data.sessionToken}; Path=/; HttpOnly; SameSite=Lax`);
+  headers.set("set-cookie", sessionCookieHeader(result.data.sessionToken));
   return new Response(null, { status: 302, headers });
 }

@@ -84,8 +84,8 @@ describe("path helpers", () => {
 
 describe("auth status helpers", () => {
   it("resolves actor landing page", () => {
-    expect(resolveActorLandingPath("QingJ01")).toBe("/admin");
-    expect(resolveActorLandingPath("qingj01")).toBe("/admin");
+    expect(resolveActorLandingPath("QingJ01")).toBe("/auth");
+    expect(resolveActorLandingPath("qingj01")).toBe("/auth");
     expect(resolveActorLandingPath("user-a")).toBe("/auth");
     expect(resolveActorLandingPath(undefined)).toBe("/auth");
   });

@@ -79,5 +79,8 @@ describe("next-style pages", () => {
     const authHtml = renderToStaticMarkup(await AuthPage({}));
     expect(authHtml).toContain("登录管理");
     expect(authHtml).toContain("使用 GitHub 登录");
+
+    const forbiddenHtml = renderToStaticMarkup(await AuthPage({ searchParams: { forbidden: "admin" } }));
+    expect(forbiddenHtml).toContain("当前账号不具备访问权限");
   });
 });

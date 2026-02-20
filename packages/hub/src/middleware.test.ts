@@ -28,7 +28,7 @@ describe("admin middleware gate", () => {
     expect(decision).toBeUndefined();
   });
 
-  it("redirects non-admin user to login", async () => {
+  it("redirects non-admin user to auth notice", async () => {
     const fetchMock = vi.fn(async () =>
       new Response(JSON.stringify({ ok: true, data: { actorId: "someone-else" } }), {
         status: 200,
@@ -46,6 +46,6 @@ describe("admin middleware gate", () => {
     );
 
     expect(decision?.status).toBe(302);
-    expect(decision?.headers.get("location")).toContain("/api/auth/github?action=login");
+    expect(decision?.headers.get("location")).toContain("/auth?forbidden=admin");
   });
 });
