@@ -1,6 +1,6 @@
-ALTER TABLE "hub_submissions" ADD COLUMN "actor_id" text DEFAULT '' NOT NULL;--> statement-breakpoint
-ALTER TABLE "hub_submissions" ADD COLUMN "complexity" text DEFAULT 'mixed' NOT NULL;--> statement-breakpoint
-ALTER TABLE "hub_submissions" ADD COLUMN "evidence_chain" jsonb;--> statement-breakpoint
+ALTER TABLE "hub_submissions" ADD COLUMN IF NOT EXISTS "actor_id" text DEFAULT '' NOT NULL;--> statement-breakpoint
+ALTER TABLE "hub_submissions" ADD COLUMN IF NOT EXISTS "complexity" text DEFAULT 'mixed' NOT NULL;--> statement-breakpoint
+ALTER TABLE "hub_submissions" ADD COLUMN IF NOT EXISTS "evidence_chain" jsonb;--> statement-breakpoint
 
 CREATE TABLE IF NOT EXISTS "hub_oauth_pending_states" (
 	"state" text PRIMARY KEY NOT NULL,
