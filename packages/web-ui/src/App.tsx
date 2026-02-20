@@ -40,7 +40,7 @@ type SubmissionDetail = {
   };
 };
 
-type RouteState =
+export type RouteState =
   | { page: "overview" }
   | { page: "history"; model?: string }
   | { page: "report"; model: string; runId?: string }
@@ -70,7 +70,7 @@ const DIMENSIONS: Array<{ key: ScoreDimension; label: string }> = [
   { key: "engineeringPractice", label: "Engineering" }
 ];
 
-function parseHashRoute(hash: string): RouteState {
+export function parseHashRoute(hash: string): RouteState {
   const raw = hash.replace(/^#/, "").trim();
   if (!raw || raw === "/") {
     return { page: "overview" };
@@ -96,7 +96,7 @@ function parseHashRoute(hash: string): RouteState {
   return { page: "overview" };
 }
 
-function toHash(route: RouteState): string {
+export function toHash(route: RouteState): string {
   if (route.page === "overview") {
     return "#/";
   }
@@ -141,7 +141,7 @@ async function fetchModelSubmissions(model: string): Promise<SubmissionDetail[]>
   return payload.data.submissions;
 }
 
-function safeScore(value: number | undefined): number {
+export function safeScore(value: number | undefined): number {
   if (typeof value !== "number" || Number.isNaN(value)) {
     return 0;
   }

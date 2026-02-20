@@ -430,11 +430,7 @@ export function createAuthValidator(expectedToken: string): ValidationHook {
 
 export async function postNonceRoute(request: NonceRequest): Promise<NonceResponse> {
   requireNonEmpty(request.userId, "userId");
-
-  return {
-    nonce: `nonce-${Date.now()}`,
-    expiresAt: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString()
-  };
+  return defaultStore.issueNonce(request.userId);
 }
 
 export async function postSubmitRoute(payload: SubmissionRequest): Promise<SubmissionResponse> {
@@ -465,8 +461,7 @@ export async function postFlagSubmissionRoute(
 }
 
 export async function getLeaderboardRoute(request: LeaderboardRequest): Promise<LeaderboardEntry[]> {
-  parseLeaderboardQuery(request);
-  return [];
+  return defaultStore.listLeaderboard(request);
 }
 
 function mapError(error: unknown): RouteErrorEnvelope {

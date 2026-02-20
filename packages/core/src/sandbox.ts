@@ -33,6 +33,7 @@ export function buildDockerSandboxCommand(options: SandboxOptions = {}): string[
   const args = [
     "run",
     "--rm",
+    ...(readOnly ? ["--read-only"] : []),
     "--cpus",
     String(cpus),
     "--memory",
@@ -50,10 +51,6 @@ export function buildDockerSandboxCommand(options: SandboxOptions = {}): string[
     image,
     ...command
   ];
-
-  if (readOnly) {
-    args.splice(2, 0, "--read-only");
-  }
 
   return args;
 }

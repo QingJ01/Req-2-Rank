@@ -126,6 +126,34 @@ export function createDrizzleSubmissionStore(databaseUrl: string): SubmissionSto
       await ensureSchema();
       const { limit, offset, sort, complexity, dimension } = parseLeaderboardQuery(query);
 
+      if (!dimension) {
+        const rows = await db.execute<{
+          model: string;
+          score: number;
+          ci_low: number;
+          ci_high: number;
+          verification_status: "pending" | "verified" | "disputed";
+        }>(sql`
+          SELECT DISTINCT ON (model) model, score, ci_low, ci_high, verification_status
+          FROM hub_submissions
+          ${complexity ? sql`WHERE complexity = ${complexity}` : sql``}
+          ORDER BY model, score DESC
+        `);
+
+        const sorted = rows
+          .slice()
+          .sort((left, right) => (sort === "asc" ? Number(left.score) - Number(right.score) : Number(right.score) - Number(left.score)))
+          .slice(offset, offset + limit);
+
+        return sorted.map((item, index) => ({
+          rank: offset + index + 1,
+          model: item.model,
+          score: Number(item.score),
+          ci95: [Number(item.ci_low), Number(item.ci_high)],
+          verificationStatus: item.verification_status
+        }));
+      }
+
       const rows = await db.execute<{
         model: string;
         complexity: string;

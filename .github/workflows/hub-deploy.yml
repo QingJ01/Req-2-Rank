@@ -25,6 +25,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @req2rank/hub typecheck
       - run: pnpm --filter @req2rank/hub test
+      - run: pnpm --filter @req2rank/hub next:build
       - run: pnpm --filter @req2rank/hub db:migrate
         env:
           R2R_DATABASE_URL: ${{ secrets.R2R_DATABASE_URL }}
