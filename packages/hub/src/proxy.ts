@@ -18,8 +18,10 @@ function readCookie(request: Request, key: string): string | undefined {
   return undefined;
 }
 
-function buildLoginRedirect(url: URL): Response {
-  const lang = url.searchParams.get("lang") ?? "zh";
+function buildLoginRedirect(url: URL, request: Request): Response {
+  const langParam = url.searchParams.get("lang");
+  const langCookie = readCookie(request, LANG_COOKIE);
+  const lang = langParam ?? (langCookie === "en" ? "en" : "zh");
   const backTo = `/admin?lang=${encodeURIComponent(lang)}`;
   const loginUrl = new URL("/api/auth/github", url.origin);
   loginUrl.searchParams.set("action", "login");
@@ -35,20 +37,6 @@ function buildForbiddenRedirect(url: URL): Response {
   return Response.redirect(location, 302);
 }
 
-function resolveLangRedirect(request: Request): Response | undefined {
-  const url = new URL(request.url);
-  if (url.pathname.startsWith("/api/")) {
-    return undefined;
-  }
-  if (url.searchParams.has("lang")) {
-    return undefined;
-  }
-  const stored = readCookie(request, LANG_COOKIE);
-  const lang = stored === "en" ? "en" : "zh";
-  url.searchParams.set("lang", lang);
-  return Response.redirect(url, 302);
-}
-
 export async function resolveAdminGateDecision(
   request: Request,
   fetchImpl: typeof fetch = fetch
@@ -60,7 +48,7 @@ export async function resolveAdminGateDecision(
 
   const sessionToken = readCookie(request, "r2r_session");
   if (!sessionToken) {
-    return buildLoginRedirect(url);
+    return buildLoginRedirect(url, request);
   }
 
   const verifyUrl = new URL("/api/auth/github", url.origin);
@@ -76,7 +64,7 @@ export async function resolveAdminGateDecision(
     });
 
     if (!response.ok) {
-      return buildLoginRedirect(url);
+      return buildLoginRedirect(url, request);
     }
 
     const payload = (await response.json()) as {
@@ -88,7 +76,7 @@ export async function resolveAdminGateDecision(
 
     const actorId = payload.data?.actorId;
     if (!payload.ok || !actorId) {
-      return buildLoginRedirect(url);
+      return buildLoginRedirect(url, request);
     }
 
     if (!isAdminActor(actorId)) {
@@ -97,15 +85,11 @@ export async function resolveAdminGateDecision(
 
     return undefined;
   } catch {
-    return buildLoginRedirect(url);
+    return buildLoginRedirect(url, request);
   }
 }
 
 export async function proxy(request: Request): Promise<Response | undefined> {
-  const langRedirect = resolveLangRedirect(request);
-  if (langRedirect) {
-    return langRedirect;
-  }
   return resolveAdminGateDecision(request);
 }
 

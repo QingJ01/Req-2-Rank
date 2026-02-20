@@ -1,7 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
-import { resolveAdminGateDecision } from "./proxy.js";
+import { proxy, resolveAdminGateDecision } from "./proxy.js";
 
 describe("admin middleware gate", () => {
+  it("does not redirect non-admin routes for language query", async () => {
+    const decision = await proxy(new Request("http://localhost/"));
+    expect(decision).toBeUndefined();
+  });
+
   it("redirects to login when session cookie is missing", async () => {
     const decision = await resolveAdminGateDecision(new Request("http://localhost/admin"), vi.fn());
     expect(decision?.status).toBe(302);
