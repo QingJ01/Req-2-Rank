@@ -16,19 +16,11 @@ export default async function SubmissionPage({ params }: SubmissionPageProps) {
 
   return (
     <section>
-      <h1 style={{ marginTop: 0, fontSize: 32 }}>Submission Detail</h1>
+      <h1>Submission Detail</h1>
       {!detail ? (
-        <p style={{ color: "#4e5566" }}>Submission not found.</p>
+        <p className="hub-muted">Submission not found.</p>
       ) : (
-        <div
-          style={{
-            padding: 16,
-            borderRadius: 12,
-            backgroundColor: "rgba(255,255,255,0.72)",
-            border: "1px solid rgba(31,36,48,0.1)",
-            lineHeight: 1.7
-          }}
-        >
+        <div className="hub-card" style={{ padding: 16, lineHeight: 1.7 }}>
           <div>
             <strong>Run ID:</strong> {detail.runId}
           </div>
@@ -45,7 +37,7 @@ export default async function SubmissionPage({ params }: SubmissionPageProps) {
             <strong>Submitted:</strong> {detail.submittedAt}
           </div>
 
-          <h2 style={{ fontSize: 18, marginTop: 14, marginBottom: 8 }}>Dimension Scores</h2>
+          <h2>Dimension Scores</h2>
           {dimensions.length === 0 ? (
             <div>Dimension scores unavailable.</div>
           ) : (
@@ -58,12 +50,12 @@ export default async function SubmissionPage({ params }: SubmissionPageProps) {
             </ul>
           )}
 
-          <h2 style={{ fontSize: 18, marginTop: 14, marginBottom: 8 }}>Evidence Chain</h2>
+          <h2>Evidence Chain</h2>
           <div>
             <strong>Timeline:</strong> {timeline.length} phase(s)
           </div>
           {timeline.length > 0 && (
-            <ul style={{ marginTop: 4, marginBottom: 8 }}>
+            <ul>
               {timeline.map((item, index) => (
                 <li key={`${item.phase}-${index}`}>
                   {item.phase}: {item.startedAt} {"->"} {item.completedAt} ({item.model})
@@ -75,7 +67,7 @@ export default async function SubmissionPage({ params }: SubmissionPageProps) {
             <strong>Samples:</strong> {samples.length}
           </div>
           {samples.length > 0 && (
-            <div style={{ marginTop: 6, marginBottom: 8, display: "grid", gap: 8 }}>
+            <div className="hub-grid" style={{ marginTop: 6, marginBottom: 8 }}>
               {samples.map((sample) => (
                 <SampleCard key={`sample-${sample.roundIndex}`} sample={sample} />
               ))}

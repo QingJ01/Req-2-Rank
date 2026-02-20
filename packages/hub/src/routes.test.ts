@@ -6,7 +6,6 @@ import {
   createNonceHandler,
   createSubmissionStore,
   createSubmitHandler,
-  getLeaderboardRoute,
   postNonceRoute,
   postSubmitRoute
 } from "./routes.js";
@@ -128,6 +127,7 @@ describe("hub route skeletons", () => {
         nonce: nonce1.data.nonce,
         targetProvider: "openai",
         targetModel: "gpt-4o-mini",
+        complexity: "C3",
         overallScore: 90,
         submittedAt: new Date("2026-01-01T00:00:00.000Z").toISOString(),
         evidenceChain: {
@@ -153,6 +153,7 @@ describe("hub route skeletons", () => {
         nonce: nonce2.data.nonce,
         targetProvider: "openai",
         targetModel: "gpt-4o-mini",
+        complexity: "C2",
         overallScore: 85,
         submittedAt: new Date("2026-01-01T00:00:00.000Z").toISOString(),
         evidenceChain: {
@@ -173,7 +174,7 @@ describe("hub route skeletons", () => {
     const leaderboard = await leaderboardHandler({
       actorId: "user-1",
       authToken: "token-1",
-      body: { limit: 5, offset: 0, sort: "desc" }
+      body: { limit: 5, offset: 0, sort: "desc", complexity: "C3" }
     });
 
     expect(leaderboard.ok).toBe(true);
@@ -182,6 +183,98 @@ describe("hub route skeletons", () => {
     }
     expect(leaderboard.data[0]?.model).toBe("openai/gpt-4o-mini");
     expect(leaderboard.data[0]?.score).toBe(90);
+  });
+
+  it("supports dimension sorting", async () => {
+    const store = createSubmissionStore();
+    const validate = createAuthValidator("token-1");
+    const nonceHandler = createNonceHandler(validate, store);
+    const submitHandler = createSubmitHandler(validate, store);
+    const leaderboardHandler = createLeaderboardHandler(validate, store);
+
+    const nonce1 = await nonceHandler({ actorId: "user-1", authToken: "token-1", body: { userId: "user-1" } });
+    const nonce2 = await nonceHandler({ actorId: "user-1", authToken: "token-1", body: { userId: "user-1" } });
+    if (!nonce1.ok || !nonce2.ok) {
+      throw new Error("expected nonce success");
+    }
+
+    await submitHandler({
+      actorId: "user-1",
+      authToken: "token-1",
+      body: {
+        runId: "run-dim-1",
+        nonce: nonce1.data.nonce,
+        targetProvider: "openai",
+        targetModel: "gpt-4o-mini",
+        complexity: "C2",
+        overallScore: 85,
+        dimensionScores: {
+          functionalCompleteness: 80,
+          codeQuality: 75,
+          logicAccuracy: 78,
+          security: 70,
+          engineeringPractice: 82
+        },
+        submittedAt: new Date("2026-01-01T00:00:00.000Z").toISOString(),
+        evidenceChain: {
+          timeline: [
+            {
+              phase: "generate",
+              startedAt: "2026-01-01T00:00:00.000Z",
+              completedAt: "2026-01-01T00:00:01.000Z",
+              model: "system"
+            }
+          ],
+          samples: [{ roundIndex: 0, requirement: "demo", codeSubmission: "ok" }],
+          environment: { os: "win32", nodeVersion: "v22", timezone: "UTC" }
+        }
+      }
+    });
+
+    await submitHandler({
+      actorId: "user-1",
+      authToken: "token-1",
+      body: {
+        runId: "run-dim-2",
+        nonce: nonce2.data.nonce,
+        targetProvider: "anthropic",
+        targetModel: "claude-sonnet",
+        complexity: "C2",
+        overallScore: 83,
+        dimensionScores: {
+          functionalCompleteness: 84,
+          codeQuality: 82,
+          logicAccuracy: 83,
+          security: 95,
+          engineeringPractice: 84
+        },
+        submittedAt: new Date("2026-01-01T00:00:00.000Z").toISOString(),
+        evidenceChain: {
+          timeline: [
+            {
+              phase: "generate",
+              startedAt: "2026-01-01T00:00:00.000Z",
+              completedAt: "2026-01-01T00:00:01.000Z",
+              model: "system"
+            }
+          ],
+          samples: [{ roundIndex: 0, requirement: "demo", codeSubmission: "ok" }],
+          environment: { os: "win32", nodeVersion: "v22", timezone: "UTC" }
+        }
+      }
+    });
+
+    const leaderboard = await leaderboardHandler({
+      actorId: "user-1",
+      authToken: "token-1",
+      body: { limit: 5, offset: 0, sort: "desc", dimension: "security" }
+    });
+
+    expect(leaderboard.ok).toBe(true);
+    if (!leaderboard.ok) {
+      throw new Error("expected leaderboard success");
+    }
+    expect(leaderboard.data[0]?.model).toBe("anthropic/claude-sonnet");
   });
 
   it("rejects submission when timeline phases are out of order", async () => {
@@ -431,16 +524,24 @@ describe("hub route skeletons", () => {
     expect(response.status).toBe("accepted");
   });
 
-  it("returns leaderboard entries with limit", async () => {
-    const entries = await getLeaderboardRoute({ limit: 2, offset: 1, sort: "asc" });
-    expect(entries).toHaveLength(2);
-    expect(entries[0].score).toBeLessThanOrEqual(entries[1].score);
+  it("returns empty leaderboard when store has no submissions", async () => {
+    const handler = createLeaderboardHandler(async () => {}, createSubmissionStore());
+    const result = await handler({ actorId: "user-1", body: { limit: 2, offset: 0, sort: "asc" } });
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      throw new Error("expected success envelope");
+    }
+    expect(result.data).toHaveLength(0);
   });
 
   it("rejects invalid leaderboard pagination", async () => {
-    await expect(getLeaderboardRoute({ limit: 0, offset: -1, sort: "desc" })).rejects.toThrow(
-      "limit must be a positive integer"
-    );
+    const handler = createLeaderboardHandler(async () => {}, createSubmissionStore());
+    const result = await handler({ actorId: "user-1", body: { limit: 0, offset: -1, sort: "desc" } });
+    expect(result.ok).toBe(false);
+    if (result.ok) {
+      throw new Error("expected validation error envelope");
+    }
+    expect(result.error.message).toContain("limit must be a positive integer");
   });
 
   it("supports composed nonce/submit handlers with shared validation hook", async () => {
@@ -536,14 +637,14 @@ describe("hub route skeletons", () => {
   });
 
   it("returns success envelope for composed leaderboard handler", async () => {
-    const handler = createLeaderboardHandler(async () => {});
+    const handler = createLeaderboardHandler(async () => {}, createSubmissionStore());
     const result = await handler({ actorId: "user-1", body: { limit: 2, offset: 1, sort: "asc" } });
 
     expect(result.ok).toBe(true);
     if (!result.ok) {
       throw new Error("expected success envelope");
     }
-    expect(result.data).toHaveLength(2);
+    expect(result.data).toHaveLength(0);
   });
 
   it("returns validation error envelope for composed leaderboard handler", async () => {

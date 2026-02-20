@@ -35,7 +35,7 @@ export async function startGithubAuthLogin(input: {
     requireNonEmpty(clientId ?? "", "R2R_GITHUB_CLIENT_ID");
 
     const redirectUri = input.redirectUri ?? process.env.R2R_GITHUB_REDIRECT_URI ?? "http://localhost:3000/api/auth/github";
-    const state = issueGithubOAuthState({ actorIdHint: input.actorIdHint });
+    const state = await issueGithubOAuthState({ actorIdHint: input.actorIdHint });
 
     const params = new URLSearchParams({
       client_id: clientId as string,
@@ -104,7 +104,7 @@ export async function handleGithubAuthCallback(
       params.set("state", input.state);
     }
 
-    const pending = input.state ? consumeGithubOAuthState(input.state) : undefined;
+    const pending = input.state ? await consumeGithubOAuthState(input.state) : undefined;
 
     const tokenResponse = await fetch("https://github.com/login/oauth/access_token", {
       method: "POST",
@@ -137,7 +137,7 @@ export async function handleGithubAuthCallback(
 
     const userPayload = (await userResponse.json()) as GithubUserResponse;
     const actorId = input.actorIdHint?.trim() || pending?.actorIdHint || userPayload.login || String(userPayload.id);
-    const sessionToken = issueGithubOAuthSession({
+    const sessionToken = await issueGithubOAuthSession({
       actorId,
       accessToken: oauthAccessToken
     });
@@ -178,9 +178,9 @@ export async function GET(request: Request): Promise<Response> {
   }
 
   if (action === "session") {
-    gcGithubOAuthSessionStore();
+    await gcGithubOAuthSessionStore();
     const sessionToken = request.headers.get("x-session-token") ?? url.searchParams.get("session") ?? "";
-    const session = resolveGithubOAuthSession(sessionToken);
+    const session = await resolveGithubOAuthSession(sessionToken);
     if (!session) {
       return Response.json(
         {

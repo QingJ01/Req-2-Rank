@@ -30,7 +30,9 @@ export async function GET(request: Request): Promise<Response> {
     query: {
       limit: url.searchParams.get("limit") ?? undefined,
       offset: url.searchParams.get("offset") ?? undefined,
-      sort: url.searchParams.get("sort") ?? undefined
+      sort: url.searchParams.get("sort") ?? undefined,
+      complexity: url.searchParams.get("complexity") ?? undefined,
+      dimension: url.searchParams.get("dimension") ?? undefined
     }
   });
 

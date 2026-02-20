@@ -17,7 +17,9 @@ export async function GET(request: Request): Promise<Response> {
   const entries = await appStore.listLeaderboard({
     limit: url.searchParams.get("limit") ?? 20,
     offset: url.searchParams.get("offset") ?? 0,
-    sort: url.searchParams.get("sort") ?? "desc"
+    sort: url.searchParams.get("sort") ?? "desc",
+    complexity: url.searchParams.get("complexity") ?? undefined,
+    dimension: url.searchParams.get("dimension") ?? undefined
   });
 
   return Response.json({ ok: true, status: 200, data: entries }, { status: 200 });

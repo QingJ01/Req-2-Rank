@@ -62,7 +62,7 @@ export function createGitHubOAuthSessionValidator(): ValidationHook {
       throw new Error("not authorized");
     }
 
-    const session = resolveGithubOAuthSession(authToken);
+    const session = await resolveGithubOAuthSession(authToken);
     if (!session) {
       throw new Error("not authorized");
     }

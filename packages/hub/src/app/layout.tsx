@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { appStore } from "./state.js";
+import "./globals.css";
 
 type RootLayoutProps = {
   children: ReactNode;
@@ -10,39 +11,24 @@ export default async function RootLayout({ children }: RootLayoutProps) {
 
   return (
     <html lang="en">
-      <body
-        style={{
-          margin: 0,
-          minHeight: "100vh",
-          fontFamily: '"Trebuchet MS", "Segoe UI", sans-serif',
-          background:
-            "radial-gradient(circle at 15% 20%, #ffd89b 0%, transparent 35%), radial-gradient(circle at 85% 10%, #a0d2ff 0%, transparent 40%), linear-gradient(145deg, #faf6ef 0%, #f2f7ff 55%, #fffdf5 100%)",
-          color: "#1f2430"
-        }}
-      >
-        <header
-          style={{
-            padding: "18px 28px",
-            borderBottom: "1px solid rgba(31,36,48,0.12)",
-            backdropFilter: "blur(4px)"
-          }}
-        >
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <strong style={{ letterSpacing: "0.08em", textTransform: "uppercase" }}>Req2Rank Hub</strong>
-            <nav style={{ display: "flex", gap: 16, fontSize: 14 }}>
-              <a href="/" style={{ color: "#1f2430", textDecoration: "none" }}>
+      <body>
+        <header className="hub-header">
+          <div className="hub-header-inner">
+            <strong className="hub-brand">Req2Rank Hub</strong>
+            <nav className="hub-nav">
+              <a href="/">
                 Leaderboard
               </a>
-              <span style={{ opacity: 0.75 }}>Models</span>
+              <span className="hub-muted">Models</span>
               {topModels.map((item) => (
-                <a key={item.model} href={`/model/${encodeURIComponent(item.model)}`} style={{ color: "#1f2430", textDecoration: "none" }}>
+                <a key={item.model} href={`/model/${encodeURIComponent(item.model)}`}>
                   {item.model.split("/")[1] ?? item.model}
                 </a>
               ))}
             </nav>
           </div>
         </header>
-        <main style={{ padding: 28 }}>{children}</main>
+        <main className="hub-main">{children}</main>
       </body>
     </html>
   );

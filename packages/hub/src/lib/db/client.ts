@@ -3,7 +3,7 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { LeaderboardEntry, LeaderboardQuery, NonceResponse, SubmissionRequest, parseLeaderboardQuery } from "@req2rank/core";
 import { ReverificationJobDetail, SubmissionDetail, SubmissionStore } from "../../routes.js";
-import { noncesTable, reverificationJobsTable, submissionsTable } from "./schema.js";
+import { calibrationSnapshotsTable, noncesTable, reverificationJobsTable, submissionsTable } from "./schema.js";
 
 function toDetail(row: {
   runId: string;
@@ -34,50 +34,9 @@ export function createDrizzleSubmissionStore(databaseUrl: string): SubmissionSto
   const client = postgres(databaseUrl, { prepare: false });
   const db = drizzle(client);
 
-  let schemaReady: Promise<void> | undefined;
-
   async function ensureSchema(): Promise<void> {
-    if (!schemaReady) {
-      schemaReady = (async () => {
-        await db.execute(sql`
-          CREATE TABLE IF NOT EXISTS hub_nonces (
-            nonce TEXT PRIMARY KEY,
-            actor_id TEXT NOT NULL,
-            expires_at TIMESTAMPTZ NOT NULL,
-            used_at TIMESTAMPTZ,
-            created_at TIMESTAMPTZ NOT NULL
-          )
-        `);
-        await db.execute(sql`
-          CREATE TABLE IF NOT EXISTS hub_submissions (
-            run_id TEXT PRIMARY KEY,
-            actor_id TEXT NOT NULL DEFAULT '',
-            model TEXT NOT NULL,
-            score REAL NOT NULL,
-            ci_low REAL NOT NULL DEFAULT 0,
-            ci_high REAL NOT NULL DEFAULT 0,
-            agreement_level TEXT NOT NULL DEFAULT 'moderate',
-            dimension_scores JSONB NOT NULL DEFAULT '{}',
-            evidence_chain JSONB,
-            submitted_at TIMESTAMPTZ NOT NULL,
-            verification_status TEXT NOT NULL,
-            flagged BOOLEAN NOT NULL DEFAULT FALSE
-          )
-        `);
-        await db.execute(sql`ALTER TABLE hub_submissions ADD COLUMN IF NOT EXISTS actor_id TEXT NOT NULL DEFAULT ''`);
-        await db.execute(sql`ALTER TABLE hub_submissions ADD COLUMN IF NOT EXISTS evidence_chain JSONB`);
-        await db.execute(sql`
-          CREATE TABLE IF NOT EXISTS hub_reverification_jobs (
-            id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-            run_id TEXT NOT NULL,
-            reason TEXT NOT NULL,
-            queued_at TIMESTAMPTZ NOT NULL
-          )
-        `);
-      })();
-    }
-
-    await schemaReady;
+    // Schema is managed by drizzle migrations (pnpm --filter @req2rank/hub db:migrate).
+    return;
   }
 
   return {
@@ -129,6 +88,7 @@ export function createDrizzleSubmissionStore(databaseUrl: string): SubmissionSto
           runId: payload.runId,
           actorId,
           model: `${payload.targetProvider}/${payload.targetModel}`,
+          complexity: payload.complexity ?? "mixed",
           score: payload.overallScore,
           ciLow: payload.ci95?.[0] ?? payload.overallScore,
           ciHigh: payload.ci95?.[1] ?? payload.overallScore,
@@ -144,6 +104,7 @@ export function createDrizzleSubmissionStore(databaseUrl: string): SubmissionSto
           set: {
             actorId,
             model: `${payload.targetProvider}/${payload.targetModel}`,
+            complexity: payload.complexity ?? "mixed",
             score: payload.overallScore,
             ciLow: payload.ci95?.[0] ?? payload.overallScore,
             ciHigh: payload.ci95?.[1] ?? payload.overallScore,
@@ -163,23 +124,43 @@ export function createDrizzleSubmissionStore(databaseUrl: string): SubmissionSto
 
     async listLeaderboard(query: LeaderboardQuery): Promise<LeaderboardEntry[]> {
       await ensureSchema();
-      const { limit, offset, sort } = parseLeaderboardQuery(query);
+      const { limit, offset, sort, complexity, dimension } = parseLeaderboardQuery(query);
 
       const rows = await db.execute<{
         model: string;
+        complexity: string;
         score: number;
         ci_low: number;
         ci_high: number;
+        dimension_scores: Record<string, number>;
         verification_status: "pending" | "verified" | "disputed";
       }>(sql`
-        SELECT DISTINCT ON (model) model, score, ci_low, ci_high, verification_status
+        SELECT model, complexity, score, ci_low, ci_high, dimension_scores, verification_status
         FROM hub_submissions
-        ORDER BY model, score DESC
+        ${complexity ? sql`WHERE complexity = ${complexity}` : sql``}
       `);
 
-      const sorted = rows
+      const metric = (row: {
+        score: number;
+        dimension_scores: Record<string, number>;
+      }): number => {
+        if (!dimension) {
+          return Number(row.score);
+        }
+        return Number(row.dimension_scores?.[dimension] ?? 0);
+      };
+
+      const bestByModel = new Map<string, (typeof rows)[number]>();
+      for (const row of rows) {
+        const previous = bestByModel.get(row.model);
+        if (!previous || metric(row) > metric(previous)) {
+          bestByModel.set(row.model, row);
+        }
+      }
+
+      const sorted = Array.from(bestByModel.values())
         .slice()
-        .sort((left, right) => (sort === "asc" ? left.score - right.score : right.score - left.score))
+        .sort((left, right) => (sort === "asc" ? metric(left) - metric(right) : metric(right) - metric(left)))
         .slice(offset, offset + limit);
 
       return sorted.map((item, index) => ({
@@ -262,6 +243,53 @@ export function createDrizzleSubmissionStore(databaseUrl: string): SubmissionSto
       await ensureSchema();
       await db.update(submissionsTable).set({ verificationStatus: status }).where(eq(submissionsTable.runId, runId));
       await db.execute(sql`DELETE FROM hub_reverification_jobs WHERE run_id = ${runId}`);
+    },
+
+    async saveCalibration(record) {
+      await ensureSchema();
+      const [row] = await db
+        .insert(calibrationSnapshotsTable)
+        .values({
+          source: record.source,
+          actorId: record.actorId ?? null,
+          recommendedComplexity: record.recommendedComplexity,
+          reason: record.reason,
+          averageScore: record.averageScore,
+          sampleSize: record.sampleSize,
+          createdAt: new Date()
+        })
+        .returning();
+
+      return {
+        id: String(row.id),
+        source: row.source,
+        actorId: row.actorId ?? undefined,
+        recommendedComplexity: row.recommendedComplexity as "C1" | "C2" | "C3" | "C4",
+        reason: row.reason,
+        averageScore: row.averageScore,
+        sampleSize: row.sampleSize,
+        createdAt: row.createdAt.toISOString()
+      };
+    },
+
+    async listCalibrations(limit = 20) {
+      await ensureSchema();
+      const rows = await db
+        .select()
+        .from(calibrationSnapshotsTable)
+        .orderBy(desc(calibrationSnapshotsTable.createdAt))
+        .limit(limit);
+
+      return rows.map((row) => ({
+        id: String(row.id),
+        source: row.source,
+        actorId: row.actorId ?? undefined,
+        recommendedComplexity: row.recommendedComplexity as "C1" | "C2" | "C3" | "C4",
+        reason: row.reason,
+        averageScore: row.averageScore,
+        sampleSize: row.sampleSize,
+        createdAt: row.createdAt.toISOString()
+      }));
     }
   };
 }

@@ -42,42 +42,16 @@ export function SampleCard({ sample }: { sample: Sample }) {
   }
 
   return (
-    <details
-      style={{
-        padding: 10,
-        borderRadius: 8,
-        border: "1px solid rgba(31,36,48,0.12)",
-        backgroundColor: "rgba(255,255,255,0.65)"
-      }}
-    >
+    <details className="sample-shell">
       <summary style={{ cursor: "pointer", fontWeight: 600 }}>Sample {sample.roundIndex}</summary>
-      <div style={{ marginTop: 8 }}>
+      <div>
         <strong>Requirement</strong>
-        <pre
-          style={{
-            margin: "6px 0 10px 0",
-            whiteSpace: "pre-wrap",
-            backgroundColor: "rgba(31,36,48,0.06)",
-            borderRadius: 6,
-            padding: 8
-          }}
-        >
+        <pre className="sample-pre">
           {sample.requirement}
         </pre>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
           <strong>Code Submission</strong>
-          <button
-            type="button"
-            onClick={handleCopy}
-            style={{
-              border: "1px solid rgba(31,36,48,0.25)",
-              background: "rgba(255,255,255,0.9)",
-              borderRadius: 6,
-              padding: "2px 8px",
-              fontSize: 12,
-              cursor: "pointer"
-            }}
-          >
+          <button type="button" onClick={handleCopy} className="sample-button">
             {copied ? "Copied" : "Copy code"}
           </button>
         </div>

@@ -1,0 +1,120 @@
+:root {
+  --bg: #f6f7fb;
+  --panel: #ffffff;
+  --line: #d7dce8;
+  --text: #1f2430;
+  --muted: #4e5566;
+  --accent: #2b5da9;
+  --shadow: 0 10px 30px rgba(29, 48, 77, 0.12);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+  background: radial-gradient(circle at 15% 20%, #ffd89b 0%, transparent 35%),
+    radial-gradient(circle at 85% 10%, #a0d2ff 0%, transparent 40%),
+    linear-gradient(145deg, #faf6ef 0%, #f2f7ff 55%, #fffdf5 100%);
+  color: var(--text);
+}
+
+.hub-header {
+  padding: 18px 28px;
+  border-bottom: 1px solid rgba(31, 36, 48, 0.12);
+  backdrop-filter: blur(4px);
+}
+
+.hub-header-inner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.hub-brand {
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.hub-nav {
+  display: flex;
+  gap: 16px;
+  font-size: 14px;
+}
+
+.hub-nav a {
+  color: var(--text);
+  text-decoration: none;
+}
+
+.hub-main {
+  padding: 28px;
+}
+
+.hub-card {
+  border-radius: 12px;
+  border: 1px solid rgba(31, 36, 48, 0.1);
+  background-color: rgba(255, 255, 255, 0.78);
+  box-shadow: var(--shadow);
+}
+
+.hub-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.hub-table th,
+.hub-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(31, 36, 48, 0.1);
+  font-size: 14px;
+  text-align: left;
+}
+
+.hub-muted {
+  color: var(--muted);
+}
+
+.hub-grid {
+  display: grid;
+  gap: 14px;
+}
+
+.hub-grid.cols-2 {
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.hub-pill {
+  display: inline-block;
+  padding: 4px 9px;
+  border-radius: 999px;
+  color: white;
+  font-size: 12px;
+}
+
+.sample-shell {
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(31, 36, 48, 0.12);
+  background-color: rgba(255, 255, 255, 0.65);
+}
+
+.sample-pre {
+  margin: 6px 0 10px 0;
+  white-space: pre-wrap;
+  background-color: rgba(31, 36, 48, 0.06);
+  border-radius: 6px;
+  padding: 8px;
+}
+
+.sample-button {
+  border: 1px solid rgba(31, 36, 48, 0.25);
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 6px;
+  padding: 2px 8px;
+  font-size: 12px;
+  cursor: pointer;
+}

@@ -41,6 +41,17 @@ export interface ReverificationJobDetail {
   queuedAt: string;
 }
 
+export interface CalibrationRecord {
+  id: string;
+  source: string;
+  actorId?: string;
+  recommendedComplexity: "C1" | "C2" | "C3" | "C4";
+  reason: string;
+  averageScore: number;
+  sampleSize: number;
+  createdAt: string;
+}
+
 export interface RouteContext<TBody> {
   actorId: string;
   authToken?: string;
@@ -83,6 +94,7 @@ interface StoredSubmission {
   runId: string;
   actorId: string;
   model: string;
+  complexity: "C1" | "C2" | "C3" | "C4" | "mixed";
   score: number;
   ci95: [number, number];
   agreementLevel: "high" | "moderate" | "low";
@@ -98,6 +110,17 @@ interface ReverificationJob {
   queuedAt: string;
 }
 
+interface StoredCalibration {
+  id: string;
+  source: string;
+  actorId?: string;
+  recommendedComplexity: "C1" | "C2" | "C3" | "C4";
+  reason: string;
+  averageScore: number;
+  sampleSize: number;
+  createdAt: string;
+}
+
 export interface SubmissionStore {
   issueNonce(actorId: string): Promise<NonceResponse>;
   consumeNonce(actorId: string, nonce: string, now?: Date): Promise<void>;
@@ -110,6 +133,8 @@ export interface SubmissionStore {
   listModelSubmissions(model: string): Promise<SubmissionDetail[]>;
   listQueuedReverificationJobs(limit?: number): Promise<ReverificationJobDetail[]>;
   resolveReverificationJob(runId: string, status: "verified" | "disputed"): Promise<void>;
+  saveCalibration(record: Omit<CalibrationRecord, "id" | "createdAt">): Promise<CalibrationRecord>;
+  listCalibrations(limit?: number): Promise<CalibrationRecord[]>;
 }
 
 function resolveDailySubmissionLimit(): number {
@@ -210,6 +235,7 @@ export function createSubmissionStore(): SubmissionStore {
   const nonces: StoredNonce[] = [];
   const submissions: StoredSubmission[] = [];
   const jobs: ReverificationJob[] = [];
+  const calibrations: StoredCalibration[] = [];
 
   function activeNonceCount(actorId: string, nowIso: string): number {
     return nonces.filter((item) => item.actorId === actorId && !item.usedAt && item.expiresAt > nowIso).length;
@@ -259,6 +285,7 @@ export function createSubmissionStore(): SubmissionStore {
         runId: payload.runId,
         actorId,
         model: `${payload.targetProvider}/${payload.targetModel}`,
+        complexity: payload.complexity ?? "mixed",
         score: payload.overallScore,
         ci95: payload.ci95 ?? [payload.overallScore, payload.overallScore],
         agreementLevel: payload.agreementLevel ?? "moderate",
@@ -278,12 +305,19 @@ export function createSubmissionStore(): SubmissionStore {
     },
 
     async listLeaderboard(query: LeaderboardQuery): Promise<LeaderboardEntry[]> {
-      const { limit, offset, sort } = parseLeaderboardQuery(query);
+      const { limit, offset, sort, complexity, dimension } = parseLeaderboardQuery(query);
+      const metric = (submission: StoredSubmission): number => {
+        if (!dimension) {
+          return submission.score;
+        }
+        return submission.dimensionScores[dimension] ?? 0;
+      };
+
       const bestByModel = new Map<string, StoredSubmission>();
 
-      for (const submission of submissions) {
+      for (const submission of submissions.filter((item) => (complexity ? item.complexity === complexity : true))) {
         const prev = bestByModel.get(submission.model);
-        if (prev === undefined || submission.score > prev.score) {
+        if (prev === undefined || metric(submission) > metric(prev)) {
           bestByModel.set(submission.model, submission);
         }
       }
@@ -291,7 +325,9 @@ export function createSubmissionStore(): SubmissionStore {
       const entries = Array.from(bestByModel.entries())
         .map(([model, submission]) => ({ model, submission }))
         .sort((left, right) =>
-          sort === "asc" ? left.submission.score - right.submission.score : right.submission.score - left.submission.score
+          sort === "asc"
+            ? metric(left.submission) - metric(right.submission)
+            : metric(right.submission) - metric(left.submission)
         )
         .map((item, index) => ({
           rank: index + 1,
@@ -360,6 +396,24 @@ export function createSubmissionStore(): SubmissionStore {
       if (jobIndex >= 0) {
         jobs.splice(jobIndex, 1);
       }
+    },
+
+    async saveCalibration(record: Omit<CalibrationRecord, "id" | "createdAt">): Promise<CalibrationRecord> {
+      const calibration: StoredCalibration = {
+        ...record,
+        id: `cal-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
+        createdAt: new Date().toISOString()
+      };
+      calibrations.push(calibration);
+      return { ...calibration };
+    },
+
+    async listCalibrations(limit = 20): Promise<CalibrationRecord[]> {
+      return calibrations
+        .slice()
+        .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
+        .slice(0, limit)
+        .map((item) => ({ ...item }));
     }
   };
 }
@@ -411,19 +465,8 @@ export async function postFlagSubmissionRoute(
 }
 
 export async function getLeaderboardRoute(request: LeaderboardRequest): Promise<LeaderboardEntry[]> {
-  const { limit, offset, sort } = parseLeaderboardQuery(request);
-
-  const base = Array.from({ length: 10 }).map((_, index) => ({
-    rank: index + 1,
-    model: `model-${index + 1}`,
-    score: 95 - index
-  }));
-
-  const ordered = sort === "asc" ? base.slice().reverse() : base;
-  return ordered.slice(offset, offset + limit).map((entry, index) => ({
-    ...entry,
-    rank: offset + index + 1
-  }));
+  parseLeaderboardQuery(request);
+  return [];
 }
 
 function mapError(error: unknown): RouteErrorEnvelope {
@@ -506,11 +549,10 @@ export function createLeaderboardHandler(validate: ValidationHook, store: Submis
     try {
       await validate(context.actorId, context.authToken);
       const data = await store.listLeaderboard(context.body);
-      const fallbackData = data.length > 0 ? data : await getLeaderboardRoute(context.body);
       return {
         ok: true,
         status: 200,
-        data: fallbackData
+        data
       };
     } catch (error) {
       return mapError(error);
