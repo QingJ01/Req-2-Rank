@@ -52,10 +52,35 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @req2rank/core build
       - run: pnpm --filter @req2rank/cli build
-      - run: pnpm --filter @req2rank/core publish --access public --provenance --no-git-checks
+      - run: pnpm --filter req2rank build
+      - name: Publish @req2rank/core
+        run: |
+          VERSION=$(node -p "require('./packages/core/package.json').version")
+          if npm view @req2rank/core@${VERSION} version >/dev/null 2>&1; then
+            echo "@req2rank/core@${VERSION} already published, skipping"
+          else
+            pnpm --filter @req2rank/core publish --access public --provenance --no-git-checks
+          fi
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-      - run: pnpm --filter @req2rank/cli publish --access public --provenance --no-git-checks
+      - name: Publish @req2rank/cli
+        run: |
+          VERSION=$(node -p "require('./packages/cli/package.json').version")
+          if npm view @req2rank/cli@${VERSION} version >/dev/null 2>&1; then
+            echo "@req2rank/cli@${VERSION} already published, skipping"
+          else
+            pnpm --filter @req2rank/cli publish --access public --provenance --no-git-checks
+          fi
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Publish req2rank
+        run: |
+          VERSION=$(node -p "require('./packages/req2rank/package.json').version")
+          if npm view req2rank@${VERSION} version >/dev/null 2>&1; then
+            echo "req2rank@${VERSION} already published, skipping"
+          else
+            pnpm --filter req2rank publish --access public --provenance --no-git-checks
+          fi
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
@@ -75,3 +100,4 @@ jobs:
         run: |
           npm dist-tag add @req2rank/core@${ROLLBACK_VERSION} latest
           npm dist-tag add @req2rank/cli@${ROLLBACK_VERSION} latest
+          npm dist-tag add req2rank@${ROLLBACK_VERSION} latest

@@ -2,7 +2,7 @@
 
 ## Publish
 
-1. Bump package versions (`@req2rank/core`, `@req2rank/cli`).
+1. Bump package versions (`@req2rank/core`, `@req2rank/cli`, `req2rank`).
 2. Ensure GitHub repository secret `NPM_TOKEN` is configured.
 3. Push tag `v<version>` to trigger `.github/workflows/release.yml`, or use `workflow_dispatch`.
 4. Workflow runs typecheck/tests, then publishes both packages to npm.
@@ -14,6 +14,7 @@
 3. Value should be an npm automation token with publish permission for:
    - `@req2rank/core`
    - `@req2rank/cli`
+   - `req2rank`
 
 If `NPM_TOKEN` is missing or expired, publish step will fail.
 
@@ -24,6 +25,7 @@ Run after workflow succeeds:
 ```bash
 npm view @req2rank/core version
 npm view @req2rank/cli version
+npm view req2rank version
 npx req2rank --help
 ```
 
@@ -41,6 +43,7 @@ Use workflow dispatch for `Release Packages`:
 The workflow updates npm `latest` dist-tag for both packages:
 - `@req2rank/core@<rollbackVersion>`
 - `@req2rank/cli@<rollbackVersion>`
+- `req2rank@<rollbackVersion>`
 
 ## Guardrails
 

@@ -1,0 +1,25 @@
+{
+  "name": "req2rank",
+  "version": "0.1.0",
+  "private": false,
+  "type": "module",
+  "bin": {
+    "req2rank": "bin/req2rank.js"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "bin",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "node -e \"process.exit(0)\"",
+    "typecheck": "node -e \"process.exit(0)\"",
+    "test": "node -e \"process.exit(0)\""
+  },
+  "dependencies": {
+    "@req2rank/cli": "^0.1.0"
+  }
+}
