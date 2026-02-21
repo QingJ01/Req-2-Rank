@@ -22,6 +22,20 @@ class StubJudgeProvider implements LLMProvider {
   }
 }
 
+class StubFencedJudgeProvider implements LLMProvider {
+  id = "stub-judge-fenced";
+  name = "Stub Judge Fenced";
+
+  async chat(): Promise<{ content: string; usage: { promptTokens: number; completionTokens: number }; latencyMs: number }> {
+    return {
+      content:
+        "```json\r\n{\"functionalCompleteness\":84,\"codeQuality\":79,\"logicAccuracy\":86,\"security\":75,\"engineeringPractice\":80}\r\n```",
+      usage: { promptTokens: 10, completionTokens: 12 },
+      latencyMs: 15
+    };
+  }
+}
+
 class ThrowingJudgeProvider implements LLMProvider {
   id = "throw-judge";
   name = "Throw Judge";
@@ -163,6 +177,22 @@ describe("calculateIja", () => {
 
     expect(output.results).toHaveLength(1);
     expect(output.droppedJudges).toContain("openai/gpt-4o-mini");
+  });
+
+  it("parses fenced JSON scores with CRLF newlines", async () => {
+    const panel = new EvaluationPanel();
+    const requirement = makeRequirement();
+    const execution = {
+      code: "export const answer = 42;",
+      language: "typescript",
+      timeoutMs: 60_000,
+      maxTokens: 8_192
+    };
+    const judges: JudgeConfig[] = [{ provider: "openai", model: "gpt-4o", weight: 1 }];
+
+    const results = await panel.evaluate(requirement, execution, judges, () => new StubFencedJudgeProvider());
+    expect(results).toHaveLength(1);
+    expect(results[0].dimensions.security).toBe(75);
   });
 
   it("throws when all judges fail", async () => {

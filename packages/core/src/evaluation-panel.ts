@@ -38,7 +38,7 @@ function parseJsonObject(raw: string): Record<string, unknown> | undefined {
     // continue
   }
 
-  const fenced = raw.match(/```json\n([\s\S]*?)```/i);
+  const fenced = raw.match(/```json\r?\n([\s\S]*?)```/i);
   if (!fenced) {
     return undefined;
   }

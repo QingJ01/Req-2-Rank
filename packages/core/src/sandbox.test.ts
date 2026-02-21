@@ -14,7 +14,7 @@ describe("buildDockerSandboxCommand", () => {
 
   it("uses explicit workspacePath when provided", () => {
     const args = buildDockerSandboxCommand({ workspacePath: "/tmp/demo-workspace", command: ["node", "--version"] });
-    expect(args).toContain("/tmp/demo-workspace:/workspace");
+    expect(args).toContain("/tmp/demo-workspace:/workspace:ro");
     expect(args).toContain("node");
     expect(args).toContain("--version");
   });

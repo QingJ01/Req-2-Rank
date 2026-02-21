@@ -350,8 +350,12 @@ export function createCliApp(options: CliAppOptions = {}) {
     let config: Req2RankConfig | undefined;
     try {
       config = await readConfig(cwd);
-    } catch {
-      return createHubClient();
+    } catch (error) {
+      const code = (error as { code?: string } | undefined)?.code;
+      if (code === "ENOENT") {
+        return createHubClient();
+      }
+      throw error;
     }
     const envEnabled = env.R2R_HUB_ENABLED ? env.R2R_HUB_ENABLED === "true" : undefined;
     const enabled = envEnabled ?? config.hub?.enabled ?? false;

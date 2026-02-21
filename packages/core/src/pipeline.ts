@@ -6,6 +6,7 @@ import { LLMProvider } from "./providers/base.js";
 import { createProvider } from "./providers/index.js";
 import { RequirementGenerator } from "./requirement-generator.js";
 import { ScoringEngine } from "./scoring-engine.js";
+import { randomUUID } from "node:crypto";
 
 const C12 = ["C1", "C2"] as const;
 const C1234 = ["C1", "C2", "C3", "C4"] as const;
@@ -21,7 +22,8 @@ function resolveComplexity(value: Req2RankConfig["test"]["complexity"], now: Dat
 
 function buildRunId(now: Date): string {
   const base = now.toISOString().replace(/[T:.Z-]/g, "").slice(0, 14);
-  return `run-${base}`;
+  const suffix = randomUUID().replace(/-/g, "").slice(0, 8);
+  return `run-${base}-${suffix}`;
 }
 
 function average(values: number[]): number {

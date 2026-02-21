@@ -1,6 +1,7 @@
 import { and, desc, eq, gt, isNull, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
+import { randomBytes } from "node:crypto";
 import { LeaderboardEntry, LeaderboardQuery, NonceResponse, SubmissionRequest, parseLeaderboardQuery } from "@req2rank/core";
 import { ExtendedLeaderboardQuery, ReverificationJobDetail, SubmissionDetail, SubmissionStore } from "../../routes";
 import { LeaderboardAggregationStrategy, resolveLeaderboardStrategy } from "../leaderboard-strategy";
@@ -133,7 +134,7 @@ export function createDrizzleSubmissionStore(databaseUrl: string): SubmissionSto
         throw new Error("too many active nonces");
       }
 
-      const nonce = `nonce-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+      const nonce = `nonce-${Date.now()}-${randomBytes(6).toString("hex")}`;
       const expiresAt = new Date(now.getTime() + 2 * 60 * 60 * 1000);
       await db.insert(noncesTable).values({ nonce, actorId, expiresAt, createdAt: now });
       return { nonce, expiresAt: expiresAt.toISOString() };
@@ -141,6 +142,23 @@ export function createDrizzleSubmissionStore(databaseUrl: string): SubmissionSto
 
     async consumeNonce(actorId: string, nonce: string, now = new Date()): Promise<void> {
       await ensureSchema();
+      const consumed = await db
+        .update(noncesTable)
+        .set({ usedAt: now })
+        .where(
+          and(
+            eq(noncesTable.nonce, nonce),
+            eq(noncesTable.actorId, actorId),
+            isNull(noncesTable.usedAt),
+            gt(noncesTable.expiresAt, now)
+          )
+        )
+        .returning({ nonce: noncesTable.nonce });
+
+      if (consumed.length > 0) {
+        return;
+      }
+
       const rows = await db.select().from(noncesTable).where(eq(noncesTable.nonce, nonce)).limit(1);
       const target = rows[0];
       if (!target) {
@@ -155,8 +173,6 @@ export function createDrizzleSubmissionStore(databaseUrl: string): SubmissionSto
       if (target.expiresAt <= now) {
         throw new Error("nonce expired");
       }
-
-      await db.update(noncesTable).set({ usedAt: now }).where(eq(noncesTable.nonce, nonce));
     },
 
     async saveSubmission(payload: SubmissionRequest, actorId = "system"): Promise<void> {

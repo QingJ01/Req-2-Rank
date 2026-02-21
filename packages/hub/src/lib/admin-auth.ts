@@ -1,4 +1,5 @@
 import { resolveGithubOAuthSession } from "./github-oauth-session";
+import { randomBytes } from "node:crypto";
 
 const DEFAULT_ADMIN_LOGIN = "QingJ01";
 export const ADMIN_CSRF_COOKIE = "r2r_admin_csrf";
@@ -20,7 +21,7 @@ export function readCookie(request: Request, key: string): string | undefined {
 }
 
 export function createCsrfToken(): string {
-  return `${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`;
+  return randomBytes(24).toString("hex");
 }
 
 export function csrfCookieHeader(token: string): string {

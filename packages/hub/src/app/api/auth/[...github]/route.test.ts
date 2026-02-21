@@ -201,6 +201,49 @@ describe("github auth callback route", () => {
     expect(badCallback.ok).toBe(false);
   });
 
+  it("rejects callback when actor hint mismatches verified GitHub login", async () => {
+    process.env.R2R_GITHUB_CLIENT_ID = "client-id-1";
+    process.env.R2R_GITHUB_CLIENT_SECRET = "client-secret-1";
+
+    const login = await startGithubAuthLogin({
+      actorIdHint: "admin-user",
+      redirectUri: "https://example.com/api/auth/github"
+    });
+    expect(login.ok).toBe(true);
+    if (!login.ok) {
+      throw new Error("expected login success");
+    }
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("github.com/login/oauth/access_token")) {
+          return new Response(JSON.stringify({ access_token: "gho_real_token_http", token_type: "bearer" }), {
+            status: 200,
+            headers: { "content-type": "application/json" }
+          });
+        }
+        return new Response(JSON.stringify({ id: 123, login: "normal-user" }), {
+          status: 200,
+          headers: { "content-type": "application/json" }
+        });
+      })
+    );
+
+    const callback = await handleGithubAuthCallback({
+      code: "oauth-code-actor-mismatch",
+      state: login.data.state,
+      actorIdHint: "admin-user"
+    });
+
+    expect(callback.ok).toBe(false);
+    if (callback.ok) {
+      throw new Error("expected mismatch failure");
+    }
+    expect(callback.error.message).toContain("actor mismatch");
+  });
+
   it("redirects browser login requests to GitHub auth url", async () => {
     process.env.R2R_GITHUB_CLIENT_ID = "client-id-1";
 

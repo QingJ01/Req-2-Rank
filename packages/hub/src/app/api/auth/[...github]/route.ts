@@ -163,7 +163,18 @@ export async function handleGithubAuthCallback(
     }
 
     const userPayload = (await userResponse.json()) as GithubUserResponse;
-    const actorId = input.actorIdHint?.trim() || pending?.actorIdHint || userPayload.login || String(userPayload.id);
+    const actorId = (userPayload.login ?? String(userPayload.id)).trim();
+    requireNonEmpty(actorId, "GitHub actorId");
+
+    const actorHints = [input.actorIdHint, pending?.actorIdHint]
+      .map((value) => value?.trim())
+      .filter((value): value is string => Boolean(value));
+    for (const hint of actorHints) {
+      if (hint.toLowerCase() !== actorId.toLowerCase()) {
+        throw new Error("OAuth actor mismatch");
+      }
+    }
+
     const sessionToken = await issueGithubOAuthSession({
       actorId,
       accessToken: oauthAccessToken

@@ -68,6 +68,13 @@ describe("ExecutionEngine", () => {
     expect(parsed.code).toContain("answer = 42");
   });
 
+  it("parses fenced-code blocks with CRLF newlines", () => {
+    const parsed = parseExecutionResponse("```ts\r\nexport const answer = 42;\r\n```");
+
+    expect(parsed.language).toBe("ts");
+    expect(parsed.code).toContain("answer = 42");
+  });
+
   it("uses requirement complexity budget during execute", async () => {
     const provider = new StubProvider();
     const engine = new ExecutionEngine();

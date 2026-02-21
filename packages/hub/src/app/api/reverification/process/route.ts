@@ -1,20 +1,10 @@
 import { appStore } from "../../../state";
 import { processQueuedReverificationJobs } from "../../../../reverification-worker";
 
-function canUseAutoMode(request: Request): boolean {
-  if (process.env.R2R_REVERIFY_MODE !== "auto") {
-    return false;
-  }
-  return Boolean(request.headers.get("x-vercel-cron") || request.headers.get("x-reverify-cron") === "1");
-}
-
 function isAuthorized(request: Request): boolean {
   const secret = process.env.R2R_REVERIFY_SECRET;
   const incoming = request.headers.get("x-reverify-secret");
-  if (secret && incoming === secret) {
-    return true;
-  }
-  return canUseAutoMode(request);
+  return Boolean(secret && incoming === secret);
 }
 
 async function processJobs(request: Request): Promise<Response> {

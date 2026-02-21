@@ -64,6 +64,30 @@ class StubProvider implements LLMProvider {
   }
 }
 
+class StubFencedJsonProvider implements LLMProvider {
+  id = "stub-fenced";
+  name = "Stub Fenced";
+  callCount = 0;
+
+  async chat(): Promise<{ content: string; usage: { promptTokens: number; completionTokens: number }; latencyMs: number }> {
+    this.callCount += 1;
+    if (this.callCount < 3) {
+      return {
+        content: this.callCount === 1 ? "Draft requirement text." : "Reviewed requirement text.",
+        usage: { promptTokens: 10, completionTokens: 20 },
+        latencyMs: 5
+      };
+    }
+
+    return {
+      content:
+        "```json\r\n{\"title\":\"Generated requirement\",\"description\":\"Detailed generated requirement\",\"functionalRequirements\":[{\"id\":\"FR-1\",\"description\":\"Implement API endpoint\",\"acceptanceCriteria\":\"Request returns expected payload\",\"priority\":\"must\"},{\"id\":\"FR-2\",\"description\":\"Handle invalid input\",\"acceptanceCriteria\":\"Invalid payload returns 400\",\"priority\":\"must\"}],\"constraints\":[\"Use TypeScript\"],\"expectedDeliverables\":[\"source code\",\"tests\"],\"selfReviewPassed\":true}\r\n```",
+      usage: { promptTokens: 12, completionTokens: 22 },
+      latencyMs: 7
+    };
+  }
+}
+
 describe("RequirementGenerator", () => {
   it("returns deterministic seed metadata with fixed seed", async () => {
     const provider = new StubProvider();
@@ -158,6 +182,26 @@ describe("RequirementGenerator", () => {
     expect(c4.metadata.complexity).toBe("C4");
     expect(c3.metadata.seedId).toBeTruthy();
     expect(c4.metadata.seedId).toBeTruthy();
+  });
+
+  it("parses fenced JSON payload with CRLF newlines", async () => {
+    const provider = new StubFencedJsonProvider();
+    const generator = new RequirementGenerator();
+
+    const result = await generator.generate(
+      {
+        skills: ["api-design", "error-handling"],
+        complexity: "C2",
+        domain: "ecommerce",
+        scenario: "order-state",
+        techStack: ["typescript"],
+        seed: "fenced-crlf-seed"
+      },
+      { provider, model: "gpt-4o-mini" }
+    );
+
+    expect(result.title).toBe("Generated requirement");
+    expect(result.functionalRequirements).toHaveLength(2);
   });
 
   it("samples domain taxonomy for generic pipeline input", async () => {

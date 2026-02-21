@@ -1,6 +1,7 @@
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import Database from "better-sqlite3";
 import { afterEach, describe, expect, it } from "vitest";
 import { LocalStore } from "./local-store.js";
 
@@ -121,6 +122,60 @@ describe("LocalStore", () => {
     const calibrations = await store.listCalibrations();
     expect(calibrations).toHaveLength(1);
     expect(calibrations[0]?.recommendedComplexity).toBe("C2");
+    store.close();
+  });
+
+  it("skips malformed json rows instead of crashing run queries", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "req2rank-store-"));
+    tempDirs.push(dir);
+
+    const dbPath = join(dir, "runs.db");
+    const store = new LocalStore(dbPath);
+    await store.appendRun({
+      id: "run-1",
+      createdAt: new Date("2026-01-02T00:00:00.000Z").toISOString(),
+      targetProvider: "openai",
+      targetModel: "gpt-4o-mini",
+      complexity: "C1",
+      rounds: 1,
+      requirementTitle: "healthy",
+      overallScore: 80,
+      dimensionScores: {
+        functionalCompleteness: 80,
+        codeQuality: 80,
+        logicAccuracy: 80,
+        security: 80,
+        engineeringPractice: 80
+      },
+      ci95: [78, 82],
+      agreementLevel: "high"
+    });
+
+    const raw = new Database(dbPath);
+    raw
+      .prepare(
+        "INSERT INTO runs (id, created_at, target_provider, target_model, complexity, rounds, requirement_title, overall_score, dimension_scores, ci95, agreement_level) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+      )
+      .run(
+        "run-bad",
+        new Date("2026-01-01T00:00:00.000Z").toISOString(),
+        "openai",
+        "gpt-4o-mini",
+        "C1",
+        1,
+        "bad",
+        60,
+        "{bad-json",
+        "[60,61]",
+        "low"
+      );
+    raw.close();
+
+    const runs = await store.listRuns();
+    expect(runs).toHaveLength(1);
+    expect(runs[0].id).toBe("run-1");
+    const foundBad = await store.findRunById("run-bad");
+    expect(foundBad).toBeUndefined();
     store.close();
   });
 });

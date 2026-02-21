@@ -1,4 +1,5 @@
 import postgres, { Sql } from "postgres";
+import { randomBytes } from "node:crypto";
 
 export interface CommunityReport {
   id: string;
@@ -133,7 +134,7 @@ function applyQuery(items: CommunityReport[], query: CommunityReportQuery): Comm
 
 export async function submitCommunityReport(input: { runId: string; reason: string; details?: string }): Promise<CommunityReport> {
   const report: CommunityReport = {
-    id: `report-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
+    id: `report-${Date.now()}-${randomBytes(6).toString("hex")}`,
     runId: input.runId,
     reason: input.reason,
     details: input.details,
@@ -254,7 +255,7 @@ export async function logAdminAction(input: {
   metadata?: Record<string, unknown>;
 }): Promise<AdminActionLog> {
   const record: AdminActionLog = {
-    id: `local-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
+    id: `local-${Date.now()}-${randomBytes(6).toString("hex")}`,
     actorId: input.actorId,
     action: input.action,
     reportId: input.reportId,

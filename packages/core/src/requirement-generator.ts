@@ -165,7 +165,7 @@ function parseJsonObject(raw: string): Record<string, unknown> | undefined {
     // continue with fence fallback
   }
 
-  const jsonFence = raw.match(/```json\n([\s\S]*?)```/i);
+  const jsonFence = raw.match(/```json\r?\n([\s\S]*?)```/i);
   if (jsonFence) {
     try {
       const parsed = JSON.parse(jsonFence[1]) as unknown;

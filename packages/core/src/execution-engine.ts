@@ -67,7 +67,7 @@ export function parseExecutionResponse(rawResponse: string): { code: string; lan
     // fall through to code-block extraction
   }
 
-  const match = rawResponse.match(/```([a-zA-Z0-9_-]+)?\n([\s\S]*?)```/);
+  const match = rawResponse.match(/```([a-zA-Z0-9_-]+)?\r?\n([\s\S]*?)```/);
   if (match) {
     return {
       language: match[1] ?? "text",

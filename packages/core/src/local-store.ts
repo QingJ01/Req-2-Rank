@@ -62,6 +62,20 @@ export class LocalStore {
   }
 
   private mapRun(row: Record<string, unknown>): RunRecord {
+    const dimensionScores = this.parseJson<Record<string, number>>(row.dimension_scores);
+    const ci95 = this.parseJson<[number, number]>(row.ci95);
+    if (!dimensionScores || !Array.isArray(ci95) || ci95.length !== 2) {
+      throw new Error("Invalid run record JSON payload");
+    }
+
+    let evidenceChain: RunRecord["evidenceChain"] | undefined;
+    if (row.evidence_chain) {
+      evidenceChain = this.parseJson<RunRecord["evidenceChain"]>(row.evidence_chain);
+      if (!evidenceChain) {
+        throw new Error("Invalid run evidenceChain payload");
+      }
+    }
+
     return {
       id: String(row.id),
       createdAt: String(row.created_at),
@@ -71,12 +85,20 @@ export class LocalStore {
       rounds: Number(row.rounds),
       requirementTitle: String(row.requirement_title),
       overallScore: Number(row.overall_score),
-      dimensionScores: JSON.parse(String(row.dimension_scores)) as Record<string, number>,
-      ci95: JSON.parse(String(row.ci95)) as [number, number],
+      dimensionScores,
+      ci95,
       agreementLevel: String(row.agreement_level) as RunRecord["agreementLevel"],
       ijaScore: typeof row.ija_score === "number" ? Number(row.ija_score) : undefined,
-      evidenceChain: row.evidence_chain ? (JSON.parse(String(row.evidence_chain)) as RunRecord["evidenceChain"]) : undefined
+      evidenceChain
     };
+  }
+
+  private parseJson<T>(value: unknown): T | undefined {
+    try {
+      return JSON.parse(String(value)) as T;
+    } catch {
+      return undefined;
+    }
   }
 
   close(): void {
@@ -95,7 +117,7 @@ export class LocalStore {
   async appendRun(run: RunRecord): Promise<void> {
     const db = await this.getDb();
     const statement = db.prepare(`
-      INSERT OR REPLACE INTO runs (
+      INSERT INTO runs (
         id,
         created_at,
         target_provider,
@@ -134,7 +156,15 @@ export class LocalStore {
       "SELECT id, created_at, target_provider, target_model, complexity, rounds, requirement_title, overall_score, dimension_scores, ci95, agreement_level, ija_score, evidence_chain FROM runs ORDER BY created_at DESC"
     );
     const rows = statement.all() as Array<Record<string, unknown>>;
-    return rows.map((row) => this.mapRun(row));
+    const runs: RunRecord[] = [];
+    for (const row of rows) {
+      try {
+        runs.push(this.mapRun(row));
+      } catch {
+        continue;
+      }
+    }
+    return runs;
   }
 
   async findRunById(runId: string): Promise<RunRecord | undefined> {
@@ -143,7 +173,15 @@ export class LocalStore {
       "SELECT id, created_at, target_provider, target_model, complexity, rounds, requirement_title, overall_score, dimension_scores, ci95, agreement_level, ija_score, evidence_chain FROM runs WHERE id = ?"
     );
     const row = statement.get(runId) as Record<string, unknown> | undefined;
-    return row ? this.mapRun(row) : undefined;
+    if (!row) {
+      return undefined;
+    }
+
+    try {
+      return this.mapRun(row);
+    } catch {
+      return undefined;
+    }
   }
 
   async appendCalibration(snapshot: CalibrationSnapshot): Promise<void> {

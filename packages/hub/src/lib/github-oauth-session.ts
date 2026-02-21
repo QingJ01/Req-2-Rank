@@ -1,4 +1,5 @@
 import postgres, { Sql } from "postgres";
+import { randomBytes } from "node:crypto";
 
 export interface PendingGithubOAuthState {
   actorIdHint?: string;
@@ -36,7 +37,7 @@ function getClient(): Sql | undefined {
 }
 
 function randomToken(prefix: string): string {
-  return `${prefix}_${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`;
+  return `${prefix}_${randomBytes(24).toString("hex")}`;
 }
 
 export async function gcGithubOAuthSessionStore(now = Date.now()): Promise<void> {
@@ -88,12 +89,11 @@ export async function consumeGithubOAuthState(state: string): Promise<PendingGit
     const rows = await client<{
       actor_id_hint: string | null;
       expires_at: Date;
-    }[]>`select actor_id_hint, expires_at from hub_oauth_pending_states where state = ${state} limit 1`;
+    }[]>`delete from hub_oauth_pending_states where state = ${state} and expires_at > ${new Date()} returning actor_id_hint, expires_at`;
     const pending = rows[0];
     if (!pending) {
       throw new Error("OAuth state is invalid or expired");
     }
-    await client`delete from hub_oauth_pending_states where state = ${state}`;
     return {
       actorIdHint: pending.actor_id_hint ?? undefined,
       expiresAt: pending.expires_at.getTime()

@@ -29,6 +29,7 @@ export function buildDockerSandboxCommand(options: SandboxOptions = {}): string[
   const pidsLimit = options.pidsLimit ?? 128;
   const network = options.network ?? "none";
   const readOnly = options.readOnly ?? true;
+  const volumeMapping = readOnly ? `${workspacePath}:${workdir}:ro` : `${workspacePath}:${workdir}`;
 
   const args = [
     "run",
@@ -45,7 +46,7 @@ export function buildDockerSandboxCommand(options: SandboxOptions = {}): string[
     "-w",
     workdir,
     "-v",
-    `${workspacePath}:${workdir}`,
+    volumeMapping,
     "--tmpfs",
     "/tmp:rw,nosuid,nodev,size=64m",
     image,

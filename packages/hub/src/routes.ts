@@ -7,6 +7,7 @@ import {
   parseLeaderboardQuery
 } from "@req2rank/core";
 import { LeaderboardAggregationStrategy, resolveLeaderboardStrategy } from "./lib/leaderboard-strategy";
+import { randomBytes } from "node:crypto";
 
 export interface NonceRequest {
   userId: string;
@@ -326,7 +327,7 @@ export function createSubmissionStore(): SubmissionStore {
       }
 
       const nonce: StoredNonce = {
-        nonce: `nonce-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
+        nonce: `nonce-${Date.now()}-${randomBytes(6).toString("hex")}`,
         actorId,
         expiresAt: new Date(now.getTime() + 2 * 60 * 60 * 1000).toISOString()
       };
@@ -444,7 +445,7 @@ export function createSubmissionStore(): SubmissionStore {
     async saveCalibration(record: Omit<CalibrationRecord, "id" | "createdAt">): Promise<CalibrationRecord> {
       const calibration: StoredCalibration = {
         ...record,
-        id: `cal-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
+        id: `cal-${Date.now()}-${randomBytes(6).toString("hex")}`,
         createdAt: new Date().toISOString()
       };
       calibrations.push(calibration);

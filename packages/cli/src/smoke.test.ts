@@ -1,4 +1,4 @@
-import { access, mkdtemp, readFile, rm } from "node:fs/promises";
+import { access, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -78,6 +78,20 @@ describe("cli smoke scenarios", () => {
 
       await expect(app.run(["submit", "--latest"])).rejects.toThrow("[NOT_FOUND] No runs available for --latest");
       await expect(app.run(["submit"])).rejects.toThrow("[VALIDATION] runId is required unless --latest is used");
+    });
+  });
+
+  it("fails loudly when req2rank config exists but is invalid json", async () => {
+    await withCli(async (cwd) => {
+      const app = createCliApp({
+        cwd,
+        env: {
+          R2R_HUB_ENABLED: "true"
+        }
+      });
+
+      await writeFile(join(cwd, "req2rank.config.json"), "{invalid-json", "utf-8");
+      await expect(app.run(["leaderboard"])).rejects.toThrow();
     });
   });
 });
