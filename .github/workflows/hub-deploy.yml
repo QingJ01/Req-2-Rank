@@ -26,10 +26,31 @@ jobs:
       - run: pnpm --filter @req2rank/hub typecheck
       - run: pnpm --filter @req2rank/hub test
       - run: pnpm --filter @req2rank/hub next:build
+      - name: Check required deploy secrets
+        id: deploy-secrets
+        shell: bash
+        run: |
+          missing=()
+          [ -z "${{ secrets.R2R_DATABASE_URL }}" ] && missing+=("R2R_DATABASE_URL")
+          [ -z "${{ secrets.VERCEL_TOKEN }}" ] && missing+=("VERCEL_TOKEN")
+          [ -z "${{ secrets.VERCEL_ORG_ID }}" ] && missing+=("VERCEL_ORG_ID")
+          [ -z "${{ secrets.VERCEL_PROJECT_ID }}" ] && missing+=("VERCEL_PROJECT_ID")
+
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Hub deploy skipped. Missing secrets: ${missing[*]}"
+          else
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          fi
       - run: pnpm --filter @req2rank/hub db:migrate
+        if: steps.deploy-secrets.outputs.available == 'true'
         env:
           R2R_DATABASE_URL: ${{ secrets.R2R_DATABASE_URL }}
       - run: pnpm dlx vercel deploy --prod --yes --cwd packages/hub --token=${{ secrets.VERCEL_TOKEN }}
+        if: steps.deploy-secrets.outputs.available == 'true'
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      - name: Deployment skipped notice
+        if: steps.deploy-secrets.outputs.available != 'true'
+        run: echo "Hub deployment skipped because required secrets are missing."
