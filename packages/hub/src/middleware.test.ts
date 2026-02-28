@@ -60,11 +60,12 @@ describe("admin middleware gate", () => {
   });
 
   it("falls back to /auth on session store errors without forcing logout", async () => {
+    const env = process.env as Record<string, string | undefined>;
     const originalNodeEnv = process.env.NODE_ENV;
     const originalDatabaseUrl = process.env.R2R_DATABASE_URL;
 
-    process.env.NODE_ENV = "production";
-    delete process.env.R2R_DATABASE_URL;
+    env.NODE_ENV = "production";
+    delete env.R2R_DATABASE_URL;
 
     try {
       const decision = await resolveAdminGateDecision(
@@ -78,8 +79,8 @@ describe("admin middleware gate", () => {
       expect(loc).toBe("http://localhost/auth");
       expect(loc).not.toContain("action=logout");
     } finally {
-      process.env.NODE_ENV = originalNodeEnv;
-      process.env.R2R_DATABASE_URL = originalDatabaseUrl;
+      env.NODE_ENV = originalNodeEnv;
+      env.R2R_DATABASE_URL = originalDatabaseUrl;
     }
   });
 });
