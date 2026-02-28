@@ -56,6 +56,14 @@ export default async function RootLayout({ children }: RootLayoutProps) {
         </header>
         <LangSync />
         <main className="hub-main">{children}</main>
+        <footer className="hub-footer">
+          <div className="hub-footer-inner">
+            <span className="hub-muted">© {new Date().getFullYear()} Req2Rank. MIT License.</span>
+            <a className="hub-footer-link" href="https://docs.req2rank.top/" target="_blank" rel="noopener noreferrer">
+              {lang === "en" ? "Documentation" : "使用文档"}
+            </a>
+          </div>
+        </footer>
       </body>
     </html>
   );

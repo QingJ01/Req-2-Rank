@@ -5,6 +5,7 @@
 [![MIT License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Node.js](https://img.shields.io/badge/Node.js-18%2B-brightgreen.svg)](#技术栈)
 [![Hub](https://img.shields.io/badge/Live%20Hub-req2rank.top-0ea5e9.svg)](https://req2rank.top)
+[![Docs](https://img.shields.io/badge/Docs-docs.req2rank.top-2563eb.svg)](https://docs.req2rank.top)
 
 ---
 
@@ -199,6 +200,8 @@ pnpm --filter @req2rank/hub next:dev
 ---
 
 ## 文档
+
+在线文档：**[docs.req2rank.top](https://docs.req2rank.top/)**
 
 | 主题 | 路径 |
 |------|------|
