@@ -16,6 +16,7 @@
   - `R2R_GITHUB_CLIENT_ID`
   - `R2R_GITHUB_CLIENT_SECRET`
   - `R2R_GITHUB_REDIRECT_URI`（推荐 `https://<domain>/api/auth/github`）
+  - `R2R_ADMIN_GITHUB_LOGIN`（可选，覆盖默认管理员 `QingJ01`）
 - 提交限频
   - `R2R_DAILY_SUBMISSION_LIMIT=20`（每个 actor 每日提交上限，未设置默认 20）
 - 异步复验入口密钥
@@ -46,7 +47,7 @@
 
 1. 在部署平台配置 PostgreSQL（`R2R_DATABASE_URL`）和网络访问策略。
 2. 二选一配置认证模式：
-   - OAuth 模式：`R2R_GITHUB_OAUTH=true` + GitHub OAuth 4 个变量
+   - OAuth 模式：`R2R_GITHUB_OAUTH=true` + GitHub OAuth 4 个变量（可选 `R2R_ADMIN_GITHUB_LOGIN`）
    - Bearer 模式：`R2R_HUB_TOKEN`
 3. 配置 `R2R_DAILY_SUBMISSION_LIMIT=20`。
 4. 配置 `R2R_REVERIFY_SECRET` 与复验重放 LLM 变量（8 个）。
