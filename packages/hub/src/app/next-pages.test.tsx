@@ -84,4 +84,13 @@ describe("next-style pages", () => {
     const forbiddenHtml = renderToStaticMarkup(await AuthPage({ searchParams: { forbidden: "admin" } }));
     expect(forbiddenHtml).toContain("当前账号不具备访问权限");
   });
+
+  it("resolves async search params and switches complexity tab", async () => {
+    const leaderboardHtml = renderToStaticMarkup(
+      await LeaderboardPage({ searchParams: Promise.resolve({ strategy: "mean", complexity: "C1" }) })
+    );
+
+    expect(leaderboardHtml).toContain("/?strategy=mean&amp;complexity=C1");
+    expect(leaderboardHtml).toContain('class="hub-segment-item active" href="/?strategy=mean&amp;complexity=C1">C1<');
+  });
 });

@@ -8,10 +8,15 @@ import { appStore } from "./state";
 import { t } from "./locales";
 
 type LeaderboardPageProps = {
-  searchParams?: {
-    strategy?: string;
-    complexity?: string;
-  };
+  searchParams?:
+    | {
+        strategy?: string;
+        complexity?: string;
+      }
+    | Promise<{
+        strategy?: string;
+        complexity?: string;
+      }>;
 };
 
 type Complexity = "C1" | "C2" | "C3" | "C4";
@@ -28,10 +33,11 @@ function buildLeaderboardHref(strategy: string, complexity: Complexity): string 
 }
 
 export default async function LeaderboardPage({ searchParams }: LeaderboardPageProps = {}) {
+  const resolvedSearchParams = await Promise.resolve(searchParams);
   const cookieStore = await cookies();
   const lang = resolveLang(cookieStore.get("hub.lang")?.value);
-  const strategy = resolveLeaderboardStrategy(searchParams?.strategy);
-  const complexity = resolveComplexity(searchParams?.complexity);
+  const strategy = resolveLeaderboardStrategy(resolvedSearchParams?.strategy);
+  const complexity = resolveComplexity(resolvedSearchParams?.complexity);
   const entries = await appStore.listLeaderboard({ limit: 30, offset: 0, sort: "desc", strategy, complexity });
   const calibrations = await appStore.listCalibrations(5);
 
