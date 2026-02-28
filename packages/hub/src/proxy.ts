@@ -1,7 +1,5 @@
-// Next.js proxy entry — must be Node.js runtime because postgres and
-// node:crypto (used transitively via github-oauth-session) are Node-only.
-export const runtime = "nodejs";
-
+// Next.js proxy entry — always runs on Node.js runtime automatically.
+// Do NOT add `export const runtime` here; Next.js 16 forbids it in proxy files.
 import { isAdminActor, readCookie } from "./lib/admin-auth";
 import { resolveGithubOAuthSession } from "./lib/github-oauth-session";
 
