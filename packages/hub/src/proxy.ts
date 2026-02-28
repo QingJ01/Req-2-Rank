@@ -1,27 +1,29 @@
-import { isAdminActor } from "./lib/admin-auth";
+// Next.js proxy entry — must be Node.js runtime because postgres and
+// node:crypto (used transitively via github-oauth-session) are Node-only.
+export const runtime = "nodejs";
 
-function readCookie(request: Request, key: string): string | undefined {
-  const cookieHeader = request.headers.get("cookie");
-  if (!cookieHeader) {
-    return undefined;
-  }
-
-  const parts = cookieHeader.split(";");
-  for (const part of parts) {
-    const [rawKey, ...rest] = part.trim().split("=");
-    if (rawKey === key) {
-      return decodeURIComponent(rest.join("="));
-    }
-  }
-  return undefined;
-}
+import { isAdminActor, readCookie } from "./lib/admin-auth";
+import { resolveGithubOAuthSession } from "./lib/github-oauth-session";
 
 function buildLoginRedirect(url: URL): Response {
-  const backTo = "/admin";
   const loginUrl = new URL("/api/auth/github", url.origin);
   loginUrl.searchParams.set("action", "login");
-  loginUrl.searchParams.set("redirect", backTo);
+  loginUrl.searchParams.set("redirect", "/admin");
   return Response.redirect(loginUrl, 302);
+}
+
+// Stale / invalid session: clear the bad cookie via the logout endpoint so the
+// browser doesn't keep replaying it and landing in a redirect loop.
+function buildStaleCookieRedirect(url: URL): Response {
+  const logoutUrl = new URL("/api/auth/github", url.origin);
+  logoutUrl.searchParams.set("action", "logout");
+  logoutUrl.searchParams.set("redirect", "/auth");
+  return Response.redirect(logoutUrl, 302);
+}
+
+function buildAuthFallbackRedirect(url: URL): Response {
+  const authUrl = new URL("/auth", url.origin);
+  return Response.redirect(authUrl, 302);
 }
 
 function buildForbiddenRedirect(url: URL): Response {
@@ -31,8 +33,7 @@ function buildForbiddenRedirect(url: URL): Response {
 }
 
 export async function resolveAdminGateDecision(
-  request: Request,
-  fetchImpl: typeof fetch = fetch
+  request: Request
 ): Promise<Response | undefined> {
   const url = new URL(request.url);
   if (!url.pathname.startsWith("/admin")) {
@@ -41,43 +42,26 @@ export async function resolveAdminGateDecision(
 
   const sessionToken = readCookie(request, "r2r_session");
   if (!sessionToken) {
+    // No cookie at all → send to GitHub login
     return buildLoginRedirect(url);
   }
 
-  const verifyUrl = new URL("/api/auth/github", url.origin);
-  verifyUrl.searchParams.set("action", "session");
-
   try {
-    const response = await fetchImpl(verifyUrl.toString(), {
-      headers: {
-        "x-session-token": sessionToken
-      },
-      cache: "no-store"
-    });
-
-    if (!response.ok) {
-      return buildLoginRedirect(url);
+    const session = await resolveGithubOAuthSession(sessionToken);
+    if (!session) {
+      // Cookie present but not recognised (expired / deleted from store) →
+      // clear it first, then let the user log in fresh.
+      return buildStaleCookieRedirect(url);
     }
 
-    const payload = (await response.json()) as {
-      ok?: boolean;
-      data?: {
-        actorId?: string;
-      };
-    };
-
-    const actorId = payload.data?.actorId;
-    if (!payload.ok || !actorId) {
-      return buildLoginRedirect(url);
-    }
-
-    if (!isAdminActor(actorId)) {
+    if (!isAdminActor(session.actorId)) {
       return buildForbiddenRedirect(url);
     }
 
     return undefined;
   } catch {
-    return buildLoginRedirect(url);
+    // Store errors (e.g. DB outage) should not clear valid cookies.
+    return buildAuthFallbackRedirect(url);
   }
 }
 
