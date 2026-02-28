@@ -127,6 +127,14 @@ describe("github auth callback route", () => {
     expect(response.headers.get("set-cookie")).toContain("r2r_session=");
   });
 
+  it("blocks open redirect on logout to external origin", async () => {
+    const response = await GET(new Request("http://localhost/api/auth/github?action=logout&redirect=https://evil.example.com/steal"));
+    expect(response.status).toBe(302);
+    const loc = response.headers.get("location") ?? "";
+    expect(loc).not.toContain("evil.example.com");
+    expect(loc).toContain("http://localhost");
+  });
+
   it("sets Secure on auth cookies when secure cookies are enabled", async () => {
     process.env.R2R_COOKIE_SECURE = "true";
     process.env.R2R_GITHUB_CLIENT_ID = "client-id-1";

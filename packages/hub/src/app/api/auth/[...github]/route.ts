@@ -210,8 +210,8 @@ export async function GET(request: Request): Promise<Response> {
   if (action === "logout") {
     const redirect = url.searchParams.get("redirect") ?? "/auth";
     const location = new URL(redirect, url.origin);
-    if (!location.searchParams.has("lang")) {
-      location.searchParams.set("lang", "zh");
+    if (location.origin !== url.origin) {
+      location.href = new URL("/auth", url.origin).toString();
     }
 
     const headers = new Headers();
@@ -319,9 +319,6 @@ export async function GET(request: Request): Promise<Response> {
   if (!result.ok) {
     const fallback = new URL("/auth", url.origin);
     fallback.searchParams.set("error", result.error.message);
-    if (!fallback.searchParams.has("lang")) {
-      fallback.searchParams.set("lang", "zh");
-    }
     return new Response(null, {
       status: 302,
       headers: {
@@ -345,9 +342,6 @@ export async function GET(request: Request): Promise<Response> {
   }
 
   const location = new URL(safeRedirectPath, url.origin);
-  if (!location.searchParams.has("lang")) {
-    location.searchParams.set("lang", "zh");
-  }
 
   const headers = new Headers();
   headers.set("location", location.toString());

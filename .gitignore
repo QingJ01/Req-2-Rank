@@ -6,3 +6,5 @@ coverage/
 *.log
 .env
 .env.*
+.claude/
+docs/site/.vitepress/cache/

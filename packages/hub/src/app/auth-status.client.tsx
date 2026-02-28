@@ -11,7 +11,7 @@ type SessionPayload = {
   data?: { actorId?: string };
 };
 
-export function resolveActorLandingPath(actorId?: string): string {
+export function resolveActorLandingPath(_actorId?: string): string {
   return "/auth";
 }
 

@@ -1,7 +1,5 @@
 import { isAdminActor } from "./lib/admin-auth";
 
-const LANG_COOKIE = "hub.lang";
-
 function readCookie(request: Request, key: string): string | undefined {
   const cookieHeader = request.headers.get("cookie");
   if (!cookieHeader) {
@@ -18,11 +16,8 @@ function readCookie(request: Request, key: string): string | undefined {
   return undefined;
 }
 
-function buildLoginRedirect(url: URL, request: Request): Response {
-  const langParam = url.searchParams.get("lang");
-  const langCookie = readCookie(request, LANG_COOKIE);
-  const lang = langParam ?? (langCookie === "en" ? "en" : "zh");
-  const backTo = `/admin?lang=${encodeURIComponent(lang)}`;
+function buildLoginRedirect(url: URL): Response {
+  const backTo = "/admin";
   const loginUrl = new URL("/api/auth/github", url.origin);
   loginUrl.searchParams.set("action", "login");
   loginUrl.searchParams.set("redirect", backTo);
@@ -32,8 +27,6 @@ function buildLoginRedirect(url: URL, request: Request): Response {
 function buildForbiddenRedirect(url: URL): Response {
   const location = new URL("/auth", url.origin);
   location.searchParams.set("forbidden", "admin");
-  const lang = url.searchParams.get("lang") ?? "zh";
-  location.searchParams.set("lang", lang === "en" ? "en" : "zh");
   return Response.redirect(location, 302);
 }
 
@@ -48,12 +41,11 @@ export async function resolveAdminGateDecision(
 
   const sessionToken = readCookie(request, "r2r_session");
   if (!sessionToken) {
-    return buildLoginRedirect(url, request);
+    return buildLoginRedirect(url);
   }
 
   const verifyUrl = new URL("/api/auth/github", url.origin);
   verifyUrl.searchParams.set("action", "session");
-  verifyUrl.searchParams.set("session", sessionToken);
 
   try {
     const response = await fetchImpl(verifyUrl.toString(), {
@@ -64,7 +56,7 @@ export async function resolveAdminGateDecision(
     });
 
     if (!response.ok) {
-      return buildLoginRedirect(url, request);
+      return buildLoginRedirect(url);
     }
 
     const payload = (await response.json()) as {
@@ -76,7 +68,7 @@ export async function resolveAdminGateDecision(
 
     const actorId = payload.data?.actorId;
     if (!payload.ok || !actorId) {
-      return buildLoginRedirect(url, request);
+      return buildLoginRedirect(url);
     }
 
     if (!isAdminActor(actorId)) {
@@ -85,7 +77,7 @@ export async function resolveAdminGateDecision(
 
     return undefined;
   } catch {
-    return buildLoginRedirect(url, request);
+    return buildLoginRedirect(url);
   }
 }
 

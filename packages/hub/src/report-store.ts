@@ -172,7 +172,14 @@ export async function listCommunityReports(query: CommunityReportQuery = {}): Pr
     return applyQuery(reports, query);
   }
 
-  const rows = await client<{
+  const status = query.status ?? "all";
+  const sortBy = query.sortBy ?? "createdAt";
+  const sortOrder = query.sortOrder ?? "desc";
+  const offset = Math.max(0, query.offset ?? 0);
+  const limit = Math.max(1, Math.min(query.limit ?? 20, 100));
+  const needle = (query.q ?? "").trim().toLowerCase();
+
+  type ReportRow = {
     id: string;
     run_id: string;
     reason: string;
@@ -181,12 +188,36 @@ export async function listCommunityReports(query: CommunityReportQuery = {}): Pr
     resolver_actor_id: string | null;
     resolved_at: Date | null;
     created_at: Date;
-  }[]>`
+  };
+
+  const orderCol = sortBy === "status" ? client`status` : client`created_at`;
+  const orderDir = sortOrder === "asc" ? client`asc` : client`desc`;
+
+  const statusFilter =
+    status === "open" ? client`and status = 'open'` :
+    status === "resolved" ? client`and status = 'resolved'` :
+    client``;
+
+  const searchFilter = needle
+    ? client`and (lower(run_id) like ${"%" + needle + "%"} or lower(reason) like ${"%" + needle + "%"} or lower(coalesce(details,'')) like ${"%" + needle + "%"})`
+    : client``;
+
+  const countRows = await client<{ total: string }[]>`
+    select count(*)::text as total
+    from hub_community_reports
+    where true ${statusFilter} ${searchFilter}
+  `;
+  const total = parseInt(countRows[0]?.total ?? "0", 10);
+
+  const rows = await client<ReportRow[]>`
     select id, run_id, reason, details, status, resolver_actor_id, resolved_at, created_at
     from hub_community_reports
+    where true ${statusFilter} ${searchFilter}
+    order by ${orderCol} ${orderDir}, created_at desc
+    limit ${limit} offset ${offset}
   `;
 
-  return applyQuery(rows.map(fromReportRow), query);
+  return { total, items: rows.map(fromReportRow) };
 }
 
 export async function getCommunityReport(id: string): Promise<CommunityReport | undefined> {

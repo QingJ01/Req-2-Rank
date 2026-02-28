@@ -36,10 +36,12 @@ export async function POST(request: Request): Promise<Response> {
     );
   }
 
-  const queueReverification = body.queueReverification !== false;
+  const queueReverification = body.queueReverification === true;
   const resolvedReports: Array<Awaited<ReturnType<typeof resolveCommunityReport>>> = [];
   const queuedReverification: Array<{ status: "queued"; runId: string; reason: "flagged" | "top-score" }> = [];
 
+  // Pre-validate all IDs before mutating anything
+  const fetchedReports: NonNullable<Awaited<ReturnType<typeof getCommunityReport>>>[] = [];
   for (const id of ids) {
     const report = await getCommunityReport(id);
     if (!report) {
@@ -48,7 +50,11 @@ export async function POST(request: Request): Promise<Response> {
         { status: 404 }
       );
     }
+    fetchedReports.push(report);
+  }
 
+  for (const report of fetchedReports) {
+    const id = report.id;
     const resolved = await resolveCommunityReport(id, auth.actorId);
     if (!resolved) {
       return Response.json(

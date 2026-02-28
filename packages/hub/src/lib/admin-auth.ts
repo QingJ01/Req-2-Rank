@@ -25,7 +25,7 @@ export function createCsrfToken(): string {
 }
 
 export function csrfCookieHeader(token: string): string {
-  const segments = [`${ADMIN_CSRF_COOKIE}=${encodeURIComponent(token)}`, "Path=/", "SameSite=Strict"];
+  const segments = [`${ADMIN_CSRF_COOKIE}=${encodeURIComponent(token)}`, "Path=/admin", "SameSite=Strict"];
   if (process.env.R2R_COOKIE_SECURE === "true" || process.env.NODE_ENV === "production") {
     segments.push("Secure");
   }
