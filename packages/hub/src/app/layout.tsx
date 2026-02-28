@@ -17,7 +17,7 @@ async function getTopModels() {
     return topModelsCache.value;
   }
 
-  const value = await appStore.listLeaderboard({ limit: 3, offset: 0, sort: "desc" });
+  const value = await appStore.listLeaderboard({ limit: 3, offset: 0, sort: "desc", complexity: "C3" });
   topModelsCache = {
     value,
     expiresAt: now + TOP_MODELS_TTL_MS

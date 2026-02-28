@@ -22,7 +22,14 @@ function parseProviderModel(model: string): { provider: string; model: string } 
   return { provider, model: modelName };
 }
 
-function buildReverificationConfig(submissionModel: string): Req2RankConfig {
+function normalizeComplexity(value: string): Req2RankConfig["test"]["complexity"] {
+  if (value === "C1" || value === "C2" || value === "C3" || value === "C4") {
+    return value;
+  }
+  return "C3";
+}
+
+function buildReverificationConfig(submissionModel: string, submissionComplexity: string): Req2RankConfig {
   const target = parseProviderModel(submissionModel);
   const toProvider = (value: string): Req2RankConfig["target"]["provider"] => value as Req2RankConfig["target"]["provider"];
 
@@ -59,7 +66,7 @@ function buildReverificationConfig(submissionModel: string): Req2RankConfig {
       }
     ],
     test: {
-      complexity: "C2",
+      complexity: normalizeComplexity(submissionComplexity),
       rounds: 1,
       concurrency: 1
     },
@@ -76,7 +83,7 @@ async function runReverificationReplay(submission: Awaited<ReturnType<Submission
 
   const orchestrator = new PipelineOrchestrator();
   const run = await orchestrator.run({
-    config: buildReverificationConfig(submission.model)
+    config: buildReverificationConfig(submission.model, submission.complexity)
   });
 
   return {

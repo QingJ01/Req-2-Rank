@@ -28,7 +28,7 @@ describe("reverification worker", () => {
         environment: { os: "win32", nodeVersion: "v22", timezone: "UTC" }
       }
     });
-    await store.queueReverification("run-job-1", "flagged");
+    await store.queueReverification("run-job-1", "score-drift");
 
     const result = await processQueuedReverificationJobs(store, {
       maxJobs: 10,

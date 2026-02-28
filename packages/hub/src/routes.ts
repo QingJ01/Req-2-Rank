@@ -23,15 +23,18 @@ export interface FlagSubmissionRequest {
   runId: string;
 }
 
+export type ReverificationReason = "top-score" | "flagged" | "score-drift";
+
 export interface ReverificationResponse {
   status: "queued";
   runId: string;
-  reason: "top-score" | "flagged";
+  reason: ReverificationReason;
 }
 
 export interface SubmissionDetail {
   runId: string;
   model: string;
+  complexity: "C1" | "C2" | "C3" | "C4" | "mixed";
   score: number;
   ci95: [number, number];
   agreementLevel: "high" | "moderate" | "low";
@@ -43,7 +46,7 @@ export interface SubmissionDetail {
 
 export interface ReverificationJobDetail {
   runId: string;
-  reason: "top-score" | "flagged";
+  reason: ReverificationReason;
   queuedAt: string;
 }
 
@@ -112,7 +115,7 @@ interface StoredSubmission {
 
 interface ReverificationJob {
   runId: string;
-  reason: "top-score" | "flagged";
+  reason: ReverificationReason;
   queuedAt: string;
 }
 
@@ -203,7 +206,7 @@ export interface SubmissionStore {
   saveSubmission(payload: SubmissionRequest, actorId?: string): Promise<void>;
   countSubmissionsForActorDay(actorId: string, dayIsoDate: string): Promise<number>;
   listLeaderboard(query: ExtendedLeaderboardQuery): Promise<LeaderboardEntry[]>;
-  queueReverification(runId: string, reason: "top-score" | "flagged"): Promise<ReverificationResponse>;
+  queueReverification(runId: string, reason: ReverificationReason): Promise<ReverificationResponse>;
   hasSubmission(runId: string): Promise<boolean>;
   getSubmission(runId: string): Promise<SubmissionDetail | undefined>;
   listModelSubmissions(model: string): Promise<SubmissionDetail[]>;
@@ -211,6 +214,47 @@ export interface SubmissionStore {
   resolveReverificationJob(runId: string, status: "verified" | "disputed"): Promise<void>;
   saveCalibration(record: Omit<CalibrationRecord, "id" | "createdAt">): Promise<CalibrationRecord>;
   listCalibrations(limit?: number): Promise<CalibrationRecord[]>;
+}
+
+function resolveModelScoreDriftThreshold(): number {
+  const raw = process.env.R2R_MODEL_SCORE_DRIFT_THRESHOLD;
+  if (!raw) {
+    return 5;
+  }
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 5;
+}
+
+function resolveModelScoreDriftMinSamples(): number {
+  const raw = process.env.R2R_MODEL_SCORE_DRIFT_MIN_SAMPLES;
+  if (!raw) {
+    return 3;
+  }
+  const parsed = Number(raw);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : 3;
+}
+
+function computeModelBaselineScore(
+  submissions: StoredSubmission[],
+  model: string,
+  excludingRunId?: string
+): { sampleSize: number; meanScore: number } {
+  const candidates = submissions.filter(
+    (item) => item.model === model && item.verificationStatus !== "disputed" && item.runId !== excludingRunId
+  );
+  if (candidates.length === 0) {
+    return { sampleSize: 0, meanScore: 0 };
+  }
+  const meanScore = candidates.reduce((sum, item) => sum + item.score, 0) / candidates.length;
+  return { sampleSize: candidates.length, meanScore };
+}
+
+function enqueueReverificationJobDedup(jobs: ReverificationJob[], runId: string, reason: ReverificationReason): void {
+  const exists = jobs.some((item) => item.runId === runId && item.reason === reason);
+  if (exists) {
+    return;
+  }
+  jobs.push({ runId, reason, queuedAt: new Date().toISOString() });
 }
 
 function resolveDailySubmissionLimit(): number {
@@ -297,6 +341,7 @@ function toDetail(input: StoredSubmission): SubmissionDetail {
   return {
     runId: input.runId,
     model: input.model,
+    complexity: input.complexity,
     score: input.score,
     ci95: input.ci95,
     agreementLevel: input.agreementLevel,
@@ -357,10 +402,23 @@ export function createSubmissionStore(): SubmissionStore {
     },
 
     async saveSubmission(payload: SubmissionRequest, actorId = "system"): Promise<void> {
-      submissions.push({
+      const model = `${payload.targetProvider}/${payload.targetModel}`;
+      const baseline = computeModelBaselineScore(submissions, model, payload.runId);
+      const scoreDriftThreshold = resolveModelScoreDriftThreshold();
+      const scoreDriftMinSamples = resolveModelScoreDriftMinSamples();
+      const scoreDriftTriggered =
+        baseline.sampleSize >= scoreDriftMinSamples && Math.abs(payload.overallScore - baseline.meanScore) > scoreDriftThreshold;
+
+      const autoReviewReason: ReverificationReason | undefined = scoreDriftTriggered
+        ? "score-drift"
+        : payload.overallScore >= 90
+          ? "top-score"
+          : undefined;
+
+      const nextSubmission: StoredSubmission = {
         runId: payload.runId,
         actorId,
-        model: `${payload.targetProvider}/${payload.targetModel}`,
+        model,
         complexity: payload.complexity ?? "mixed",
         score: payload.overallScore,
         ci95: payload.ci95 ?? [payload.overallScore, payload.overallScore],
@@ -368,11 +426,18 @@ export function createSubmissionStore(): SubmissionStore {
         dimensionScores: payload.dimensionScores ?? {},
         evidenceChain: payload.evidenceChain,
         submittedAt: payload.submittedAt,
-        verificationStatus: payload.overallScore >= 90 ? "pending" : "verified"
-      });
+        verificationStatus: autoReviewReason ? "pending" : "verified"
+      };
 
-      if (payload.overallScore >= 90) {
-        jobs.push({ runId: payload.runId, reason: "top-score", queuedAt: new Date().toISOString() });
+      const existingIndex = submissions.findIndex((item) => item.runId === payload.runId);
+      if (existingIndex >= 0) {
+        submissions[existingIndex] = nextSubmission;
+      } else {
+        submissions.push(nextSubmission);
+      }
+
+      if (autoReviewReason) {
+        enqueueReverificationJobDedup(jobs, payload.runId, autoReviewReason);
       }
     },
 
@@ -387,12 +452,12 @@ export function createSubmissionStore(): SubmissionStore {
       return aggregateModelEntries(filtered, sort, strategy, dimension, offset, limit);
     },
 
-    async queueReverification(runId: string, reason: "top-score" | "flagged"): Promise<ReverificationResponse> {
+    async queueReverification(runId: string, reason: ReverificationReason): Promise<ReverificationResponse> {
       if (!submissions.some((item) => item.runId === runId)) {
         throw new Error(`submission not found: ${runId}`);
       }
 
-      jobs.push({ runId, reason, queuedAt: new Date().toISOString() });
+      enqueueReverificationJobDedup(jobs, runId, reason);
       const target = submissions.find((item) => item.runId === runId);
       if (target) {
         target.verificationStatus = "pending";

@@ -450,6 +450,103 @@ describe("hub route skeletons", () => {
     expect(flagged.data.status).toBe("queued");
   });
 
+  it("queues score-drift reverification when score deviates from model baseline", async () => {
+    const store = createSubmissionStore();
+
+    await store.saveSubmission({
+      runId: "run-drift-base-1",
+      nonce: "n-base-1",
+      targetProvider: "openai",
+      targetModel: "gpt-4o-mini",
+      complexity: "C3",
+      overallScore: 80,
+      submittedAt: new Date("2026-01-01T00:00:00.000Z").toISOString(),
+      evidenceChain: {
+        timeline: [{ phase: "generate", startedAt: "2026-01-01T00:00:00.000Z", completedAt: "2026-01-01T00:00:01.000Z", model: "system" }],
+        samples: [{ roundIndex: 0, requirement: "demo", codeSubmission: "ok" }],
+        environment: { os: "win32", nodeVersion: "v22", timezone: "UTC" }
+      }
+    });
+    await store.saveSubmission({
+      runId: "run-drift-base-2",
+      nonce: "n-base-2",
+      targetProvider: "openai",
+      targetModel: "gpt-4o-mini",
+      complexity: "C3",
+      overallScore: 81,
+      submittedAt: new Date("2026-01-01T00:00:00.000Z").toISOString(),
+      evidenceChain: {
+        timeline: [{ phase: "generate", startedAt: "2026-01-01T00:00:00.000Z", completedAt: "2026-01-01T00:00:01.000Z", model: "system" }],
+        samples: [{ roundIndex: 0, requirement: "demo", codeSubmission: "ok" }],
+        environment: { os: "win32", nodeVersion: "v22", timezone: "UTC" }
+      }
+    });
+    await store.saveSubmission({
+      runId: "run-drift-base-3",
+      nonce: "n-base-3",
+      targetProvider: "openai",
+      targetModel: "gpt-4o-mini",
+      complexity: "C3",
+      overallScore: 79,
+      submittedAt: new Date("2026-01-01T00:00:00.000Z").toISOString(),
+      evidenceChain: {
+        timeline: [{ phase: "generate", startedAt: "2026-01-01T00:00:00.000Z", completedAt: "2026-01-01T00:00:01.000Z", model: "system" }],
+        samples: [{ roundIndex: 0, requirement: "demo", codeSubmission: "ok" }],
+        environment: { os: "win32", nodeVersion: "v22", timezone: "UTC" }
+      }
+    });
+
+    await store.saveSubmission({
+      runId: "run-drift-hit",
+      nonce: "n-drift-hit",
+      targetProvider: "openai",
+      targetModel: "gpt-4o-mini",
+      complexity: "C3",
+      overallScore: 87,
+      submittedAt: new Date("2026-01-02T00:00:00.000Z").toISOString(),
+      evidenceChain: {
+        timeline: [{ phase: "generate", startedAt: "2026-01-02T00:00:00.000Z", completedAt: "2026-01-02T00:00:01.000Z", model: "system" }],
+        samples: [{ roundIndex: 0, requirement: "demo", codeSubmission: "ok" }],
+        environment: { os: "win32", nodeVersion: "v22", timezone: "UTC" }
+      }
+    });
+
+    const detail = await store.getSubmission("run-drift-hit");
+    expect(detail?.verificationStatus).toBe("pending");
+
+    const jobs = await store.listQueuedReverificationJobs(20);
+    const driftJob = jobs.find((item) => item.runId === "run-drift-hit");
+    expect(driftJob?.reason).toBe("score-drift");
+  });
+
+  it("deduplicates reverification jobs by runId and reason", async () => {
+    const store = createSubmissionStore();
+    await store.saveSubmission({
+      runId: "run-dedup-1",
+      nonce: "n-dedup-1",
+      targetProvider: "openai",
+      targetModel: "gpt-4o-mini",
+      complexity: "C3",
+      overallScore: 96,
+      submittedAt: new Date("2026-01-01T00:00:00.000Z").toISOString(),
+      evidenceChain: {
+        timeline: [{ phase: "generate", startedAt: "2026-01-01T00:00:00.000Z", completedAt: "2026-01-01T00:00:01.000Z", model: "system" }],
+        samples: [{ roundIndex: 0, requirement: "demo", codeSubmission: "ok" }],
+        environment: { os: "win32", nodeVersion: "v22", timezone: "UTC" }
+      }
+    });
+
+    await store.queueReverification("run-dedup-1", "top-score");
+    await store.queueReverification("run-dedup-1", "top-score");
+    await store.queueReverification("run-dedup-1", "flagged");
+
+    const jobs = await store.listQueuedReverificationJobs(20);
+    const topScoreCount = jobs.filter((item) => item.runId === "run-dedup-1" && item.reason === "top-score").length;
+    const flaggedCount = jobs.filter((item) => item.runId === "run-dedup-1" && item.reason === "flagged").length;
+    expect(topScoreCount).toBe(1);
+    expect(flaggedCount).toBe(1);
+  });
+
   it("preserves dimension scores and evidence chain in submission detail", async () => {
     const store = createSubmissionStore();
     const validate = createAuthValidator("token-1");

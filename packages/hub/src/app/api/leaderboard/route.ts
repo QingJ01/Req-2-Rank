@@ -31,7 +31,7 @@ export async function GET(request: Request): Promise<Response> {
       limit: url.searchParams.get("limit") ?? undefined,
       offset: url.searchParams.get("offset") ?? undefined,
       sort: url.searchParams.get("sort") ?? undefined,
-      complexity: url.searchParams.get("complexity") ?? undefined,
+      complexity: url.searchParams.get("complexity") ?? "C3",
       dimension: url.searchParams.get("dimension") ?? undefined,
       strategy: url.searchParams.get("strategy") ?? undefined
     }

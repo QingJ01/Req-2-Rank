@@ -38,7 +38,7 @@ export async function POST(request: Request): Promise<Response> {
 
   const queueReverification = body.queueReverification === true;
   const resolvedReports: Array<Awaited<ReturnType<typeof resolveCommunityReport>>> = [];
-  const queuedReverification: Array<{ status: "queued"; runId: string; reason: "flagged" | "top-score" }> = [];
+  const queuedReverification: Array<Awaited<ReturnType<typeof appStore.queueReverification>>> = [];
 
   // Pre-validate all IDs before mutating anything
   const fetchedReports: NonNullable<Awaited<ReturnType<typeof getCommunityReport>>>[] = [];
@@ -65,7 +65,7 @@ export async function POST(request: Request): Promise<Response> {
 
     resolvedReports.push(resolved);
 
-    let reverification: { status: "queued"; runId: string; reason: "flagged" | "top-score" } | undefined;
+    let reverification: Awaited<ReturnType<typeof appStore.queueReverification>> | undefined;
     if (queueReverification) {
       reverification = await appStore.queueReverification(report.runId, "flagged");
       queuedReverification.push(reverification);

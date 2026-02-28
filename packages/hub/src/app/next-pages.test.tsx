@@ -29,6 +29,7 @@ describe("next-style pages", () => {
       nonce: "nonce-layout",
       targetProvider: "openai",
       targetModel: "gpt-4o-mini",
+      complexity: "C3",
       overallScore: 90,
       submittedAt: new Date("2026-01-01T00:00:00.000Z").toISOString(),
       evidenceChain: {

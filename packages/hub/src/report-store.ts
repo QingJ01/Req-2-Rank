@@ -44,6 +44,9 @@ let sqlClient: Sql | undefined;
 function getClient(): Sql | undefined {
   const databaseUrl = process.env.R2R_DATABASE_URL;
   if (!databaseUrl) {
+    if (process.env.NODE_ENV === "production" && process.env.R2R_ALLOW_INMEMORY_REPORT_STORE !== "true") {
+      throw new Error("R2R_DATABASE_URL is required for report store in production");
+    }
     return undefined;
   }
   if (!sqlClient) {

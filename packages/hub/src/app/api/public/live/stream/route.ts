@@ -1,5 +1,11 @@
 import { appStore } from "../../../../state";
 import { readFile } from "node:fs/promises";
+import { publicAuthErrorResponse, toPublicSubmission, validatePublicKey } from "../../shared";
+
+const LIVE_CACHE_TTL_MS = 1500;
+
+const leaderboardCache = new Map<string, { expiresAt: number; value: Awaited<ReturnType<typeof appStore.listLeaderboard>> }>();
+const modelSubmissionsCache = new Map<string, { expiresAt: number; value: Awaited<ReturnType<typeof appStore.listModelSubmissions>> }>();
 
 interface LiveProgressSnapshot {
   status: "idle" | "running" | "completed" | "failed";
@@ -15,14 +21,6 @@ interface LiveProgressSnapshot {
     state: "started" | "completed" | "failed";
     message?: string;
   }>;
-}
-
-function validatePublicKey(request: Request): boolean {
-  const configured = process.env.R2R_PUBLIC_API_KEY;
-  if (!configured) {
-    return true;
-  }
-  return request.headers.get("x-api-key") === configured;
 }
 
 function formatSseEvent(event: string, payload: unknown): string {
@@ -43,14 +41,39 @@ async function readLiveProgress(): Promise<LiveProgressSnapshot | null> {
   }
 }
 
+async function getCachedLeaderboard(limit: string, complexity: string): Promise<Awaited<ReturnType<typeof appStore.listLeaderboard>>> {
+  const now = Date.now();
+  const key = `${limit}:${complexity}`;
+  const cached = leaderboardCache.get(key);
+  if (cached && cached.expiresAt > now) {
+    return cached.value;
+  }
+  const value = await appStore.listLeaderboard({ limit, offset: 0, sort: "desc", complexity });
+  leaderboardCache.set(key, { value, expiresAt: now + LIVE_CACHE_TTL_MS });
+  return value;
+}
+
+async function getCachedModelSubmissions(model: string): Promise<Awaited<ReturnType<typeof appStore.listModelSubmissions>>> {
+  const now = Date.now();
+  const key = model;
+  const cached = modelSubmissionsCache.get(key);
+  if (cached && cached.expiresAt > now) {
+    return cached.value;
+  }
+  const value = await appStore.listModelSubmissions(model);
+  modelSubmissionsCache.set(key, { value, expiresAt: now + LIVE_CACHE_TTL_MS });
+  return value;
+}
+
 export async function GET(request: Request): Promise<Response> {
   if (!validatePublicKey(request)) {
-    return Response.json({ ok: false, status: 401, error: { code: "AUTH_ERROR", message: "invalid api key" } }, { status: 401 });
+    return publicAuthErrorResponse();
   }
 
   const url = new URL(request.url);
   const model = url.searchParams.get("model") ?? undefined;
   const limit = url.searchParams.get("limit") ?? "20";
+  const complexity = url.searchParams.get("complexity") ?? "C3";
 
   const stream = new ReadableStream<Uint8Array>({
     start(controller) {
@@ -67,12 +90,14 @@ export async function GET(request: Request): Promise<Response> {
 
       const pushUpdate = async () => {
         try {
-          const leaderboard = await appStore.listLeaderboard({ limit, offset: 0, sort: "desc" });
+          const leaderboard = await getCachedLeaderboard(limit, complexity);
           controller.enqueue(encoder.encode(formatSseEvent("leaderboard", leaderboard)));
 
           if (model) {
-            const submissions = await appStore.listModelSubmissions(model);
-            controller.enqueue(encoder.encode(formatSseEvent("model-submissions", { model, submissions })));
+            const submissions = await getCachedModelSubmissions(model);
+            controller.enqueue(
+              encoder.encode(formatSseEvent("model-submissions", { model, submissions: submissions.map((item) => toPublicSubmission(item)) }))
+            );
           }
 
           const progress = await readLiveProgress();

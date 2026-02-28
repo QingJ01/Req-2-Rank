@@ -10,20 +10,42 @@ import { t } from "./locales";
 type LeaderboardPageProps = {
   searchParams?: {
     strategy?: string;
+    complexity?: string;
   };
 };
+
+type Complexity = "C1" | "C2" | "C3" | "C4";
+
+function resolveComplexity(value: string | undefined): Complexity {
+  if (value === "C1" || value === "C2" || value === "C4") {
+    return value;
+  }
+  return "C3";
+}
+
+function buildLeaderboardHref(strategy: string, complexity: Complexity): string {
+  return `/?strategy=${encodeURIComponent(strategy)}&complexity=${encodeURIComponent(complexity)}`;
+}
 
 export default async function LeaderboardPage({ searchParams }: LeaderboardPageProps = {}) {
   const cookieStore = await cookies();
   const lang = resolveLang(cookieStore.get("hub.lang")?.value);
   const strategy = resolveLeaderboardStrategy(searchParams?.strategy);
-  const entries = await appStore.listLeaderboard({ limit: 30, offset: 0, sort: "desc", strategy });
+  const complexity = resolveComplexity(searchParams?.complexity);
+  const entries = await appStore.listLeaderboard({ limit: 30, offset: 0, sort: "desc", strategy, complexity });
   const calibrations = await appStore.listCalibrations(5);
 
   const trendModels = entries.slice(0, 5).map((item) => item.model);
   const modelSubmissions = await Promise.all(trendModels.map((model) => appStore.listModelSubmissions(model)));
   const trendByModel = Object.fromEntries(
-    modelSubmissions.map((submissions, index) => [trendModels[index], submissions.slice().reverse().map((item) => item.score)])
+    modelSubmissions.map((submissions, index) => [
+      trendModels[index],
+      submissions
+        .filter((item) => item.complexity === complexity)
+        .slice()
+        .reverse()
+        .map((item) => item.score)
+    ])
   );
 
   return (
@@ -39,13 +61,24 @@ export default async function LeaderboardPage({ searchParams }: LeaderboardPageP
         <div style={{ padding: "0 24px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <h2 style={{ fontSize: "1.25rem", margin: 0 }}>{t(lang, "models")}</h2>
           <div className="hub-segmented-controls">
-            <Link className={`hub-segment-item ${strategy === "mean" ? "active" : ""}`} href="/?strategy=mean">
+            {(["C1", "C2", "C3", "C4"] as const).map((item) => (
+              <Link
+                key={item}
+                className={`hub-segment-item ${complexity === item ? "active" : ""}`}
+                href={buildLeaderboardHref(strategy, item)}
+              >
+                {item}
+              </Link>
+            ))}
+          </div>
+          <div className="hub-segmented-controls">
+            <Link className={`hub-segment-item ${strategy === "mean" ? "active" : ""}`} href={buildLeaderboardHref("mean", complexity)}>
               {t(lang, "mean")}
             </Link>
-            <Link className={`hub-segment-item ${strategy === "best" ? "active" : ""}`} href="/?strategy=best">
+            <Link className={`hub-segment-item ${strategy === "best" ? "active" : ""}`} href={buildLeaderboardHref("best", complexity)}>
               {t(lang, "best")}
             </Link>
-            <Link className={`hub-segment-item ${strategy === "latest" ? "active" : ""}`} href="/?strategy=latest">
+            <Link className={`hub-segment-item ${strategy === "latest" ? "active" : ""}`} href={buildLeaderboardHref("latest", complexity)}>
               {t(lang, "latest")}
             </Link>
           </div>

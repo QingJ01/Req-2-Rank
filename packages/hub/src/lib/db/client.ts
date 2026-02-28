@@ -1,95 +1,24 @@
-import { and, desc, eq, gt, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, gt, isNull, ne, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { randomBytes } from "node:crypto";
 import { LeaderboardEntry, LeaderboardQuery, NonceResponse, SubmissionRequest, parseLeaderboardQuery } from "@req2rank/core";
-import { ExtendedLeaderboardQuery, ReverificationJobDetail, SubmissionDetail, SubmissionStore } from "../../routes";
+import { ExtendedLeaderboardQuery, ReverificationJobDetail, ReverificationReason, SubmissionDetail, SubmissionStore } from "../../routes";
 import { LeaderboardAggregationStrategy, resolveLeaderboardStrategy } from "../leaderboard-strategy";
 import { calibrationSnapshotsTable, noncesTable, reverificationJobsTable, submissionsTable } from "./schema";
 
-type LeaderboardRow = {
+type AggregatedLeaderboardRow = {
   model: string;
   score: number;
-  ciLow: number;
-  ciHigh: number;
-  submittedAt: Date;
-  dimensionScores: Record<string, number>;
-  verificationStatus: "pending" | "verified" | "disputed";
+  ci_low: number;
+  ci_high: number;
+  verification_status: "pending" | "verified" | "disputed";
 };
-
-function aggregateLeaderboardRows(
-  rows: LeaderboardRow[],
-  sort: "asc" | "desc",
-  strategy: LeaderboardAggregationStrategy,
-  dimension?: string,
-  offset = 0,
-  limit = 20
-): LeaderboardEntry[] {
-  const metric = (row: LeaderboardRow): number => {
-    if (!dimension) {
-      return Number(row.score);
-    }
-    return Number(row.dimensionScores?.[dimension] ?? 0);
-  };
-
-  const grouped = new Map<string, LeaderboardRow[]>();
-  for (const row of rows) {
-    const group = grouped.get(row.model) ?? [];
-    group.push(row);
-    grouped.set(row.model, group);
-  }
-
-  const aggregated = Array.from(grouped.entries()).map(([model, group]) => {
-    const count = group.length;
-    const best = group.slice().sort((left, right) => metric(right) - metric(left))[0] ?? group[0];
-    const latest = group.slice().sort((left, right) => right.submittedAt.getTime() - left.submittedAt.getTime())[0] ?? group[0];
-
-    let score = Number(best.score);
-    let ci95: [number, number] = [Number(best.ciLow), Number(best.ciHigh)];
-    let rankMetric = metric(best);
-    let verificationStatus: "pending" | "verified" | "disputed" = best.verificationStatus;
-
-    if (strategy === "latest") {
-      score = Number(latest.score);
-      ci95 = [Number(latest.ciLow), Number(latest.ciHigh)];
-      rankMetric = metric(latest);
-      verificationStatus = latest.verificationStatus;
-    } else if (strategy === "mean") {
-      score = group.reduce((sum, row) => sum + Number(row.score), 0) / count;
-      ci95 = [
-        group.reduce((sum, row) => sum + Number(row.ciLow), 0) / count,
-        group.reduce((sum, row) => sum + Number(row.ciHigh), 0) / count
-      ];
-      rankMetric = group.reduce((sum, row) => sum + metric(row), 0) / count;
-      const hasDisputed = group.some((row) => row.verificationStatus === "disputed");
-      const hasPending = group.some((row) => row.verificationStatus === "pending");
-      verificationStatus = hasDisputed ? "disputed" : hasPending ? "pending" : "verified";
-    }
-
-    return {
-      model,
-      score,
-      ci95,
-      verificationStatus,
-      metric: rankMetric
-    };
-  });
-
-  return aggregated
-    .sort((left, right) => (sort === "asc" ? left.metric - right.metric : right.metric - left.metric))
-    .slice(offset, offset + limit)
-    .map((row, index) => ({
-      rank: offset + index + 1,
-      model: row.model,
-      score: row.score,
-      ci95: row.ci95,
-      verificationStatus: row.verificationStatus
-    }));
-}
 
 function toDetail(row: {
   runId: string;
   model: string;
+  complexity: string;
   score: number;
   ciLow: number;
   ciHigh: number;
@@ -102,6 +31,7 @@ function toDetail(row: {
   return {
     runId: row.runId,
     model: row.model,
+    complexity: row.complexity as SubmissionDetail["complexity"],
     score: row.score,
     ci95: [row.ciLow, row.ciHigh],
     agreementLevel: row.agreementLevel as SubmissionDetail["agreementLevel"],
@@ -115,10 +45,94 @@ function toDetail(row: {
 export function createDrizzleSubmissionStore(databaseUrl: string): SubmissionStore {
   const client = postgres(databaseUrl, { prepare: false });
   const db = drizzle(client);
+  let schemaEnsured = false;
 
   async function ensureSchema(): Promise<void> {
-    // Schema is managed by drizzle migrations (pnpm --filter @req2rank/hub db:migrate).
-    return;
+    if (schemaEnsured) {
+      return;
+    }
+    await db.execute(sql`
+      create index if not exists hub_submissions_model_complexity_submitted_idx
+      on hub_submissions (model, complexity, submitted_at desc)
+    `);
+    await db.execute(sql`
+      create index if not exists hub_submissions_complexity_idx
+      on hub_submissions (complexity)
+    `);
+    await db.execute(sql`
+      create index if not exists hub_submissions_verification_status_idx
+      on hub_submissions (verification_status)
+    `);
+    await db.execute(sql`
+      delete from hub_reverification_jobs older
+      using hub_reverification_jobs newer
+      where older.run_id = newer.run_id
+        and older.reason = newer.reason
+        and older.id > newer.id
+    `);
+    await db.execute(sql`
+      create unique index if not exists hub_reverification_jobs_run_reason_uq
+      on hub_reverification_jobs (run_id, reason)
+    `);
+    schemaEnsured = true;
+  }
+
+  function resolveModelScoreDriftThreshold(): number {
+    const raw = process.env.R2R_MODEL_SCORE_DRIFT_THRESHOLD;
+    if (!raw) {
+      return 5;
+    }
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 5;
+  }
+
+  function resolveModelScoreDriftMinSamples(): number {
+    const raw = process.env.R2R_MODEL_SCORE_DRIFT_MIN_SAMPLES;
+    if (!raw) {
+      return 3;
+    }
+    const parsed = Number(raw);
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : 3;
+  }
+
+  async function queueReverificationInternal(runId: string, reason: ReverificationReason): Promise<void> {
+    try {
+      await db.insert(reverificationJobsTable).values({ runId, reason, queuedAt: new Date() });
+    } catch (error) {
+      if (!(error instanceof Error) || !error.message.includes("duplicate key")) {
+        throw error;
+      }
+    }
+  }
+
+  async function resolveAutoReviewReason(payload: SubmissionRequest): Promise<ReverificationReason | undefined> {
+    const model = `${payload.targetProvider}/${payload.targetModel}`;
+    const baselineRows = await db
+      .select({ score: submissionsTable.score })
+      .from(submissionsTable)
+      .where(
+        and(
+          eq(submissionsTable.model, model),
+          ne(submissionsTable.verificationStatus, "disputed"),
+          ne(submissionsTable.runId, payload.runId)
+        )
+      );
+
+    const minSamples = resolveModelScoreDriftMinSamples();
+    if (baselineRows.length >= minSamples) {
+      const baselineMean = baselineRows.reduce((sum, row) => sum + Number(row.score), 0) / baselineRows.length;
+      const driftThreshold = resolveModelScoreDriftThreshold();
+      const scoreDrift = Math.abs(payload.overallScore - baselineMean);
+      if (scoreDrift > driftThreshold) {
+        return "score-drift";
+      }
+    }
+
+    if (payload.overallScore >= 90) {
+      return "top-score";
+    }
+
+    return undefined;
   }
 
   return {
@@ -177,7 +191,8 @@ export function createDrizzleSubmissionStore(databaseUrl: string): SubmissionSto
 
     async saveSubmission(payload: SubmissionRequest, actorId = "system"): Promise<void> {
       await ensureSchema();
-      const verificationStatus = payload.overallScore >= 90 ? "pending" : "verified";
+      const autoReviewReason = await resolveAutoReviewReason(payload);
+      const verificationStatus = autoReviewReason ? "pending" : "verified";
 
       await db
         .insert(submissionsTable)
@@ -209,13 +224,12 @@ export function createDrizzleSubmissionStore(databaseUrl: string): SubmissionSto
             dimensionScores: payload.dimensionScores ?? {},
             evidenceChain: payload.evidenceChain,
             submittedAt: new Date(payload.submittedAt),
-            verificationStatus,
-            flagged: false
+            verificationStatus
           }
         });
 
-      if (payload.overallScore >= 90) {
-        await db.insert(reverificationJobsTable).values({ runId: payload.runId, reason: "top-score", queuedAt: new Date() });
+      if (autoReviewReason) {
+        await queueReverificationInternal(payload.runId, autoReviewReason);
       }
     },
 
@@ -223,31 +237,86 @@ export function createDrizzleSubmissionStore(databaseUrl: string): SubmissionSto
       await ensureSchema();
       const { limit, offset, sort, complexity, dimension } = parseLeaderboardQuery(query);
       const strategy = resolveLeaderboardStrategy((query as LeaderboardQuery & { strategy?: string }).strategy);
-      const rows = await db.execute<{
-        model: string;
-        score: number;
-        ci_low: number;
-        ci_high: number;
-        submitted_at: Date;
-        dimension_scores: Record<string, number>;
-        verification_status: "pending" | "verified" | "disputed";
-      }>(sql`
-        SELECT model, score, ci_low, ci_high, submitted_at, dimension_scores, verification_status
-        FROM hub_submissions
-        ${complexity ? sql`WHERE complexity = ${complexity}` : sql``}
-      `);
+      const sortDirection = sort === "asc" ? sql`asc` : sql`desc`;
+      const metricExpr = dimension
+        ? sql<number>`coalesce((dimension_scores ->> ${dimension})::double precision, 0)`
+        : sql<number>`score`;
+      const baseWhere = complexity ? sql`where complexity = ${complexity}` : sql``;
 
-      const normalizedRows: LeaderboardRow[] = rows.map((row) => ({
+      let rows: AggregatedLeaderboardRow[];
+
+      if (strategy === "mean") {
+        rows = await db.execute<AggregatedLeaderboardRow>(sql`
+          with aggregated as (
+            select
+              model,
+              avg(score)::double precision as score,
+              avg(ci_low)::double precision as ci_low,
+              avg(ci_high)::double precision as ci_high,
+              case
+                when bool_or(verification_status = 'disputed') then 'disputed'
+                when bool_or(verification_status = 'pending') then 'pending'
+                else 'verified'
+              end as verification_status,
+              avg(${metricExpr})::double precision as metric
+            from hub_submissions
+            ${baseWhere}
+            group by model
+          )
+          select model, score, ci_low, ci_high, verification_status
+          from aggregated
+          order by metric ${sortDirection}, model asc
+          limit ${limit} offset ${offset}
+        `);
+      } else if (strategy === "latest") {
+        rows = await db.execute<AggregatedLeaderboardRow>(sql`
+          with picked as (
+            select distinct on (model)
+              model,
+              score,
+              ci_low,
+              ci_high,
+              verification_status,
+              ${metricExpr} as metric,
+              submitted_at
+            from hub_submissions
+            ${baseWhere}
+            order by model, submitted_at desc
+          )
+          select model, score, ci_low, ci_high, verification_status
+          from picked
+          order by metric ${sortDirection}, model asc
+          limit ${limit} offset ${offset}
+        `);
+      } else {
+        const bestMetricDirection = sort === "asc" ? sql`asc` : sql`desc`;
+        rows = await db.execute<AggregatedLeaderboardRow>(sql`
+          with picked as (
+            select distinct on (model)
+              model,
+              score,
+              ci_low,
+              ci_high,
+              verification_status,
+              ${metricExpr} as metric
+            from hub_submissions
+            ${baseWhere}
+            order by model, ${metricExpr} ${bestMetricDirection}, submitted_at desc
+          )
+          select model, score, ci_low, ci_high, verification_status
+          from picked
+          order by metric ${sortDirection}, model asc
+          limit ${limit} offset ${offset}
+        `);
+      }
+
+      return rows.map((row, index) => ({
+        rank: offset + index + 1,
         model: row.model,
         score: Number(row.score),
-        ciLow: Number(row.ci_low),
-        ciHigh: Number(row.ci_high),
-        submittedAt: row.submitted_at,
-        dimensionScores: row.dimension_scores ?? {},
+        ci95: [Number(row.ci_low), Number(row.ci_high)],
         verificationStatus: row.verification_status
       }));
-
-      return aggregateLeaderboardRows(normalizedRows, sort, strategy, dimension, offset, limit);
     },
 
     async countSubmissionsForActorDay(actorId: string, dayIsoDate: string): Promise<number> {
@@ -267,18 +336,20 @@ export function createDrizzleSubmissionStore(databaseUrl: string): SubmissionSto
       return Number(rows[0]?.count ?? 0);
     },
 
-    async queueReverification(runId: string, reason: "top-score" | "flagged") {
+    async queueReverification(runId: string, reason: ReverificationReason) {
       await ensureSchema();
       const exists = await db.select({ runId: submissionsTable.runId }).from(submissionsTable).where(eq(submissionsTable.runId, runId)).limit(1);
       if (exists.length === 0) {
         throw new Error(`submission not found: ${runId}`);
       }
 
-      await db.insert(reverificationJobsTable).values({ runId, reason, queuedAt: new Date() });
-      await db
-        .update(submissionsTable)
-        .set({ verificationStatus: "pending", flagged: reason === "flagged" ? true : submissionsTable.flagged })
-        .where(eq(submissionsTable.runId, runId));
+      await queueReverificationInternal(runId, reason);
+
+      const update: { verificationStatus: "pending"; flagged?: boolean } = { verificationStatus: "pending" };
+      if (reason === "flagged") {
+        update.flagged = true;
+      }
+      await db.update(submissionsTable).set(update).where(eq(submissionsTable.runId, runId));
 
       return { status: "queued" as const, runId, reason };
     },
