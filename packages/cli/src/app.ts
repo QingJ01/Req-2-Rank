@@ -8,6 +8,7 @@ import {
   formatLeaderboardJson,
   formatLeaderboardTable,
   formatLeaderboardText,
+  formatRunSummaryText,
   formatReportJson,
   formatReportMarkdownCompact,
   formatReportMarkdown,
@@ -77,12 +78,14 @@ type RunOverrides = {
   target?: string;
   complexity?: Req2RankConfig["test"]["complexity"];
   rounds?: string;
+  stub?: boolean;
 };
 
 type CompareOptions = {
   targets: string;
   complexity?: Req2RankConfig["test"]["complexity"];
   rounds?: string;
+  stub?: boolean;
 };
 
 type CalibrateOptions = {
@@ -332,12 +335,12 @@ export function createCliApp(options: CliAppOptions = {}) {
     return config.judges.some((judge) => !judge.apiKey);
   }
 
-  function createRuntimePipeline(config: Req2RankConfig): PipelineOrchestrator {
+  function createRuntimePipeline(config: Req2RankConfig, allowStub: boolean): PipelineOrchestrator {
     if (env.R2R_FORCE_REAL_LLM === "true") {
       return new PipelineOrchestrator();
     }
 
-    if (shouldUseStubProviders(config)) {
+    if (allowStub && shouldUseStubProviders(config)) {
       return new PipelineOrchestrator(undefined, undefined, undefined, undefined, createStubProviderFactory());
     }
 
@@ -400,10 +403,18 @@ export function createCliApp(options: CliAppOptions = {}) {
         .option("--target <provider/model>")
         .option("--complexity <level>")
         .option("--rounds <count>")
+        .option("--stub")
         .action(async (options: RunOverrides) => {
           const envConfig = applyEnvOverrides(await readConfig(cwd), env);
           const config = applyRunOverrides(envConfig, options);
-          const pipeline = createRuntimePipeline(config);
+          const useStub = options.stub === true;
+          if (shouldUseStubProviders(config) && env.R2R_FORCE_REAL_LLM !== "true") {
+            if (!useStub) {
+              throw new Error("Missing API keys. Provide keys or run with --stub for simulated outputs.");
+            }
+            process.stderr.write("[warn] Running in stub mode with simulated outputs.\n");
+          }
+          const pipeline = createRuntimePipeline(config, useStub);
           const progress: LiveProgressSnapshot = {
             status: "running",
             updatedAt: new Date().toISOString(),
@@ -411,6 +422,11 @@ export function createCliApp(options: CliAppOptions = {}) {
             events: []
           };
           let writeQueue = Promise.resolve();
+          const logProgress = (event: LiveProgressEvent): void => {
+            const line = `[progress] round ${event.roundIndex + 1}/${event.totalRounds} ${event.phase} ${event.state}`;
+            const detail = event.message ? `: ${event.message}` : "";
+            process.stderr.write(`${line}${detail}\n`);
+          };
           const persist = (): void => {
             writeQueue = writeQueue.then(() => writeLiveProgress(progress));
           };
@@ -447,6 +463,7 @@ export function createCliApp(options: CliAppOptions = {}) {
                   progress.events = progress.events.slice(-120);
                 }
                 persist();
+                logProgress(event);
               },
               checkpoint: {
                 key: createPipelineCheckpointKey("run", config),
@@ -469,7 +486,7 @@ export function createCliApp(options: CliAppOptions = {}) {
           await writeQueue;
 
           await store.appendRun(runRecord);
-          output = `Run completed: ${runRecord.id}`;
+          output = formatRunSummaryText(runRecord);
         });
 
       program
@@ -478,6 +495,7 @@ export function createCliApp(options: CliAppOptions = {}) {
         .requiredOption("--targets <provider/model,provider/model,...>")
         .option("--complexity <level>")
         .option("--rounds <count>")
+        .option("--stub")
         .action(async (options: CompareOptions) => {
           const targets = options.targets.split(",").map((item) => item.trim()).filter(Boolean);
           if (targets.length < 2) {
@@ -486,13 +504,17 @@ export function createCliApp(options: CliAppOptions = {}) {
 
           const baseConfig = applyEnvOverrides(await readConfig(cwd), env);
           const rows: string[] = [];
+          const useStub = options.stub === true;
+          if (shouldUseStubProviders(baseConfig) && env.R2R_FORCE_REAL_LLM !== "true" && !useStub) {
+            throw new Error("Missing API keys. Provide keys or run with --stub for simulated outputs.");
+          }
           for (const target of targets) {
             const config = applyRunOverrides(baseConfig, {
               target,
               complexity: options.complexity,
               rounds: options.rounds
             });
-            const pipeline = createRuntimePipeline(config);
+            const pipeline = createRuntimePipeline(config, useStub);
             const runRecord = await pipeline.run({
               config,
               checkpoint: {
@@ -564,8 +586,6 @@ export function createCliApp(options: CliAppOptions = {}) {
         .argument("[runId]")
         .option("--latest")
         .action(async (runId: string | undefined, options: { latest?: boolean }) => {
-          const runtimeHubClient = await resolveHubClient();
-
           if (runId && options.latest) {
             throw new Error("runId cannot be used together with --latest");
           }
@@ -588,6 +608,8 @@ export function createCliApp(options: CliAppOptions = {}) {
             throw new Error(`Run not found: ${targetRunId}`);
           }
 
+          const runtimeHubClient = await resolveHubClient();
+
           const nonceResponse = await runtimeHubClient.requestNonce();
 
           const payload = buildSubmissionPayload({ run, nonce: nonceResponse.nonce });
@@ -606,7 +628,6 @@ export function createCliApp(options: CliAppOptions = {}) {
         .option("--dimension <functionalCompleteness|codeQuality|logicAccuracy|security|engineeringPractice>")
         .option("--output <text|table|json>")
         .action(async (options: LeaderboardOptions) => {
-          const runtimeHubClient = await resolveHubClient();
           const normalizedComplexity = options.complexity === "all" ? undefined : options.complexity;
           const query = parseLeaderboardQuery(
             {
@@ -629,6 +650,7 @@ export function createCliApp(options: CliAppOptions = {}) {
             flagName: "--output"
           });
 
+          const runtimeHubClient = await resolveHubClient();
           const entries = await runtimeHubClient.getLeaderboard(query);
           if (outputMode === "json") {
             output = formatLeaderboardJson(entries);

@@ -44,6 +44,7 @@ req2rank run [options]
 | `--target <provider/model>` | 覆盖被测模型 | 配置文件中的 `target` |
 | `--complexity <C1\|C2\|C3\|C4\|mixed>` | 覆盖复杂度等级 | 配置文件中的 `test.complexity` |
 | `--rounds <count>` | 覆盖评测轮数 | 配置文件中的 `test.rounds` |
+| `--stub` | 使用模拟输出（无 API Key 时） | — |
 
 ### 示例
 
@@ -61,6 +62,7 @@ req2rank run --complexity C3 --rounds 5
 ### 断点续跑
 
 如果评测中途中断（如网络问题），再次执行 `req2rank run` 会从上次中断的轮次继续，无需重新开始。断点信息保存在 `.req2rank/checkpoints.json`。
+当 API Key 未配置时需要使用 `--stub` 运行模拟流程，否则会直接报错。
 
 ### 实时进度
 
@@ -81,6 +83,7 @@ req2rank compare --targets <provider/model,...> [options]
 | `--targets <list>` | 逗号分隔的模型列表（**必填**） |
 | `--complexity <level>` | 复杂度等级 |
 | `--rounds <count>` | 评测轮数 |
+| `--stub` | 使用模拟输出（无 API Key 时） |
 
 ### 示例
 

@@ -122,6 +122,7 @@ export const defaultConfig: Req2RankConfig = {
     concurrency: 1
   },
   hub: {
-    enabled: false
+    enabled: true,
+    serverUrl: "https://req2rank.top"
   }
 };

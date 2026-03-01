@@ -49,6 +49,8 @@ const zh = {
     authLoggedInHint: "登录成功，可下载配置文件。",
     authForbiddenAdmin: "当前账号不具备访问权限，请使用普通用户页面。",
     hubConfigHint: "登录后可一键下载已启用 Hub 的配置文件（已写入当前登录令牌）。",
+    tokenLabel: "访问令牌",
+    copyToken: "复制令牌",
     adminAccount: "管理员账号：QingJ01",
 
     // ── Model Detail ──
@@ -189,6 +191,8 @@ const en: Record<keyof typeof zh, string> = {
     authLoggedInHint: "Login succeeded. You can download your config.",
     authForbiddenAdmin: "Your account does not have access to admin pages. Please use the user page.",
     hubConfigHint: "After login, download a Hub-enabled config file with your current login token.",
+    tokenLabel: "Access token",
+    copyToken: "Copy token",
     adminAccount: "Admin account: QingJ01",
 
     modelDetail: "Model Detail",

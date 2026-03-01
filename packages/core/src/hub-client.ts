@@ -19,40 +19,25 @@ export interface HubClientOptions {
   token?: string;
 }
 
-class PlaceholderHubClient implements HubClient {
+class UnconfiguredHubClient implements HubClient {
+  private missingConfigError(): Error {
+    return new Error("Hub is not configured. Set hub.enabled=true and provide serverUrl/token.");
+  }
+
   async requestNonce(): Promise<NonceResponse> {
-    return {
-      nonce: "placeholder-nonce",
-      expiresAt: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString()
-    };
+    throw this.missingConfigError();
   }
 
-  async submit(payload: SubmissionRequest): Promise<SubmissionResponse> {
-    return {
-      status: "pending",
-      message: `Submit pending for ${payload.runId}`
-    };
+  async submit(_payload: SubmissionRequest): Promise<SubmissionResponse> {
+    throw this.missingConfigError();
   }
 
-  async getLeaderboard(query: LeaderboardQuery): Promise<LeaderboardEntry[]> {
-    const normalizedQuery = parseLeaderboardQuery(query);
-    const { limit, offset, sort } = normalizedQuery;
-
-    const base = Array.from({ length: 5 }).map((_, index) => ({
-      rank: index + 1,
-      model: `placeholder/model-${index + 1}`,
-      score: 95 - index
-    }));
-
-    const ordered = sort === "asc" ? base.slice().reverse() : base;
-    return ordered.slice(offset, offset + limit).map((entry, index) => ({
-      ...entry,
-      rank: offset + index + 1
-    }));
+  async getLeaderboard(_query: LeaderboardQuery): Promise<LeaderboardEntry[]> {
+    throw this.missingConfigError();
   }
 
   async submitCalibration(): Promise<{ ok: boolean }> {
-    return { ok: false };
+    throw this.missingConfigError();
   }
 }
 
@@ -139,5 +124,5 @@ export function createHubClient(options: HubClientOptions = {}): HubClient {
     return new HttpHubClient(serverUrl, token);
   }
 
-  return new PlaceholderHubClient();
+  return new UnconfiguredHubClient();
 }

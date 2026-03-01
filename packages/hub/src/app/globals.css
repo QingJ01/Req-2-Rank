@@ -1037,6 +1037,24 @@ a:hover {
   color: var(--text-muted);
 }
 
+.hub-token-panel {
+  margin-top: 20px;
+  padding: 16px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-light);
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.hub-token-input {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-light);
+  background: rgba(255, 255, 255, 0.9);
+  font-size: 0.85rem;
+  color: var(--text-main);
+}
+
 .hub-action-grid {
   display: grid;
   gap: 8px;

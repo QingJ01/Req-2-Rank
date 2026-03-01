@@ -30,6 +30,10 @@ export function formatReportMarkdown(run: RunRecord): string {
   const dimensionRows = Object.entries(run.dimensionScores)
     .map(([key, value]) => `| ${key} | ${value} |`)
     .join("\n");
+  const timelineRows = run.evidenceChain?.timeline
+    ?.map((item) => `| ${item.phase} | ${item.startedAt} | ${item.completedAt} | ${item.model} |`)
+    .join("\n");
+  const sample = run.evidenceChain?.samples?.[0];
 
   return [
     "# Req2Rank Report",
@@ -48,17 +52,68 @@ export function formatReportMarkdown(run: RunRecord): string {
     "## Dimension Scores",
     "| Dimension | Score |",
     "| --- | ---: |",
-    dimensionRows
+    dimensionRows,
+    timelineRows
+      ? [
+          "",
+          "## Timeline",
+          "| Phase | Started At | Completed At | Model |",
+          "| --- | --- | --- | --- |",
+          timelineRows
+        ].join("\n")
+      : "",
+    sample
+      ? [
+          "",
+          "## Sample Requirement",
+          "```json",
+          sample.requirement,
+          "```",
+          "",
+          "## Sample Code",
+          "```",
+          sample.codeSubmission,
+          "```"
+        ].join("\n")
+      : ""
   ].join("\n");
 }
 
 export function formatReportMarkdownCompact(run: RunRecord): string {
+  const timelineRows = run.evidenceChain?.timeline
+    ?.map((item) => `| ${item.phase} | ${item.startedAt} | ${item.completedAt} | ${item.model} |`)
+    .join("\n");
+  const sample = run.evidenceChain?.samples?.[0];
+
   return [
     "# Compact Report",
     "",
     `- Run ID: ${run.id}`,
     `- Target: ${run.targetProvider}/${run.targetModel}`,
-    `- Overall Score: ${run.overallScore}`
+    `- Overall Score: ${run.overallScore}`,
+    timelineRows
+      ? [
+          "",
+          "## Timeline",
+          "| Phase | Started At | Completed At | Model |",
+          "| --- | --- | --- | --- |",
+          timelineRows
+        ].join("\n")
+      : "",
+    sample
+      ? [
+          "",
+          "## Sample Requirement",
+          "```json",
+          sample.requirement,
+          "```",
+          "",
+          "## Sample Code",
+          "```",
+          sample.codeSubmission,
+          "```"
+        ].join("\n")
+      : ""
   ].join("\n");
 }
 
@@ -79,6 +134,34 @@ export function formatReportJson(run: RunRecord): string {
     null,
     2
   );
+}
+
+export function formatRunSummaryText(run: RunRecord): string {
+  const dimensions = Object.entries(run.dimensionScores)
+    .map(([key, value]) => `${key}: ${value}`)
+    .join("\n");
+  const timeline = run.evidenceChain?.timeline
+    ?.map((item) => `${item.phase} ${item.startedAt} -> ${item.completedAt} (${item.model})`)
+    .join("\n");
+  const sample = run.evidenceChain?.samples?.[0];
+
+  return [
+    `Run completed: ${run.id}`,
+    `Target: ${run.targetProvider}/${run.targetModel}`,
+    `Complexity: ${run.complexity}`,
+    `Rounds: ${run.rounds}`,
+    `Overall score: ${run.overallScore}`,
+    `CI95: [${run.ci95[0]}, ${run.ci95[1]}]`,
+    `Agreement: ${run.agreementLevel}`,
+    `IJA: ${run.ijaScore ?? "n/a"}`,
+    dimensions,
+    timeline ? ["", "Timeline", timeline].join("\n") : "",
+    sample
+      ? ["", "Sample Requirement", sample.requirement, "", "Sample Code", sample.codeSubmission].join("\n")
+      : ""
+  ]
+    .filter((line) => line.length > 0)
+    .join("\n");
 }
 
 export function formatHistoryText(runs: RunRecord[]): string {

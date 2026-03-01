@@ -6,6 +6,11 @@ import { createCliApp } from "./app.js";
 import { CliError } from "./cli-error.js";
 
 describe("cli error taxonomy", () => {
+  function extractRunId(output: string): string {
+    const firstLine = output.split("\n")[0] ?? "";
+    const match = firstLine.match(/Run completed:\s*(\S+)/);
+    return match?.[1] ?? "";
+  }
   async function withCli(runTest: (cwd: string) => Promise<void>) {
     const cwd = await mkdtemp(join(tmpdir(), "req2rank-cli-errors-"));
     try {
@@ -64,8 +69,8 @@ describe("cli error taxonomy", () => {
       });
 
       await app.run(["init"]);
-      const runOutput = await app.run(["run"]);
-      const runId = runOutput.replace("Run completed: ", "").trim();
+      const runOutput = await app.run(["run", "--stub"]);
+      const runId = extractRunId(runOutput);
 
       await expect(app.run(["submit", runId])).rejects.toMatchObject({
         code: "RUNTIME",

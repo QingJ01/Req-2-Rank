@@ -7,6 +7,12 @@ import { Req2RankConfig, createPipelineCheckpointKey } from "@req2rank/core";
 
 const createdDirs: string[] = [];
 
+function extractRunId(output: string): string {
+  const firstLine = output.split("\n")[0] ?? "";
+  const match = firstLine.match(/Run completed:\s*(\S+)/);
+  return match?.[1] ?? "";
+}
+
 afterEach(async () => {
   vi.unstubAllGlobals();
   await Promise.all(
@@ -22,7 +28,7 @@ describe("CLI app", () => {
     const cwd = await mkdtemp(join(tmpdir(), "req2rank-init-"));
     createdDirs.push(cwd);
 
-    const app = createCliApp({ cwd });
+    const app = createCliApp({ cwd, env: { R2R_HUB_ENABLED: "false" } });
     await app.run(["init"]);
 
     const content = await readFile(join(cwd, "req2rank.config.json"), "utf-8");
@@ -34,10 +40,10 @@ describe("CLI app", () => {
     const cwd = await mkdtemp(join(tmpdir(), "req2rank-run-"));
     createdDirs.push(cwd);
 
-    const app = createCliApp({ cwd });
+    const app = createCliApp({ cwd, env: { R2R_HUB_ENABLED: "false" } });
     await app.run(["init"]);
 
-    const runResult = await app.run(["run"]);
+    const runResult = await app.run(["run", "--stub"]);
     expect(runResult).toContain("Run completed:");
 
     const historyResult = await app.run(["history"]);
@@ -49,7 +55,7 @@ describe("CLI app", () => {
     expect(parsedHistory).toHaveLength(1);
     expect(parsedHistory[0].id).toContain("run-");
 
-    const runId = runResult.split(":").at(1)?.trim();
+    const runId = extractRunId(runResult);
     expect(runId).toBeTruthy();
 
     const reportResult = await app.run(["report", runId ?? ""]);
@@ -63,7 +69,7 @@ describe("CLI app", () => {
     const cwd = await mkdtemp(join(tmpdir(), "req2rank-history-invalid-output-"));
     createdDirs.push(cwd);
 
-    const app = createCliApp({ cwd });
+    const app = createCliApp({ cwd, env: { R2R_HUB_ENABLED: "false" } });
     await expect(app.run(["history", "--output", "yaml"])).rejects.toThrow("Invalid --output value: yaml");
   });
 
@@ -99,8 +105,8 @@ describe("CLI app", () => {
     });
 
     await app.run(["init"]);
-    const runResult = await app.run(["run"]);
-    const runId = runResult.split(":").at(1)?.trim();
+    const runResult = await app.run(["run", "--stub"]);
+    const runId = extractRunId(runResult);
     expect(runId).toBeTruthy();
 
     await expect(app.run(["submit", runId ?? ""])).rejects.toThrow("[RUNTIME]");
@@ -113,8 +119,8 @@ describe("CLI app", () => {
     const app = createCliApp({ cwd });
     await app.run(["init"]);
 
-    const runResult = await app.run(["run", "--target", "anthropic/claude-sonnet-4-20250514", "--complexity", "C2", "--rounds", "3"]);
-    const runId = runResult.split(":").at(1)?.trim();
+    const runResult = await app.run(["run", "--stub", "--target", "anthropic/claude-sonnet-4-20250514", "--complexity", "C2", "--rounds", "3"]);
+    const runId = extractRunId(runResult);
     expect(runId).toBeTruthy();
 
     const reportResult = await app.run(["report", runId ?? ""]);
@@ -129,8 +135,8 @@ describe("CLI app", () => {
 
     const app = createCliApp({ cwd });
     await app.run(["init"]);
-    const runResult = await app.run(["run"]);
-    const runId = runResult.split(":").at(1)?.trim();
+    const runResult = await app.run(["run", "--stub"]);
+    const runId = extractRunId(runResult);
     expect(runId).toBeTruthy();
 
     const outputPath = join(cwd, "report.md");
@@ -152,8 +158,8 @@ describe("CLI app", () => {
 
     const app = createCliApp({ cwd });
     await app.run(["init"]);
-    const runResult = await app.run(["run"]);
-    const runId = runResult.split(":").at(1)?.trim();
+    const runResult = await app.run(["run", "--stub"]);
+    const runId = extractRunId(runResult);
     expect(runId).toBeTruthy();
 
     const reportResult = await app.run(["report", runId ?? "", "--template", "compact"]);
@@ -168,8 +174,8 @@ describe("CLI app", () => {
 
     const app = createCliApp({ cwd });
     await app.run(["init"]);
-    const runResult = await app.run(["run"]);
-    const runId = runResult.split(":").at(1)?.trim();
+    const runResult = await app.run(["run", "--stub"]);
+    const runId = extractRunId(runResult);
     expect(runId).toBeTruthy();
 
     const outPath = join(cwd, "compact.md");
@@ -184,8 +190,8 @@ describe("CLI app", () => {
 
     const app = createCliApp({ cwd });
     await app.run(["init"]);
-    const runResult = await app.run(["run"]);
-    const runId = runResult.split(":").at(1)?.trim();
+    const runResult = await app.run(["run", "--stub"]);
+    const runId = extractRunId(runResult);
     expect(runId).toBeTruthy();
 
     await expect(app.run(["report", runId ?? "", "--template", "fancy"])).rejects.toThrow(
@@ -193,19 +199,17 @@ describe("CLI app", () => {
     );
   });
 
-  it("supports submit skeleton command", async () => {
+  it("fails submit when hub is not configured", async () => {
     const cwd = await mkdtemp(join(tmpdir(), "req2rank-submit-"));
     createdDirs.push(cwd);
 
-    const app = createCliApp({ cwd });
+    const app = createCliApp({ cwd, env: { R2R_HUB_ENABLED: "false" } });
     await app.run(["init"]);
-    const runResult = await app.run(["run"]);
-    const runId = runResult.split(":").at(1)?.trim();
+    const runResult = await app.run(["run", "--stub"]);
+    const runId = extractRunId(runResult);
     expect(runId).toBeTruthy();
 
-    const submitResult = await app.run(["submit", runId ?? ""]);
-    expect(submitResult).toContain("Submit pending");
-    expect(submitResult).toContain(runId ?? "");
+    await expect(app.run(["submit", runId ?? ""])).rejects.toThrow("Hub is not configured");
   });
 
   it("uses hub config to create real hub client when enabled", async () => {
@@ -248,21 +252,20 @@ describe("CLI app", () => {
     };
     await writeFile(configPath, JSON.stringify(config, null, 2), "utf-8");
 
-    const runResult = await app.run(["run"]);
-    const runId = runResult.split(":").at(1)?.trim();
+    const runResult = await app.run(["run", "--stub"]);
+    const runId = extractRunId(runResult);
     const submitResult = await app.run(["submit", runId ?? ""]);
 
     expect(submitResult).toContain("submitted-from-http");
     expect(fetchMock).toHaveBeenCalled();
   });
 
-  it("supports leaderboard skeleton command", async () => {
+  it("fails leaderboard when hub is not configured", async () => {
     const cwd = await mkdtemp(join(tmpdir(), "req2rank-leaderboard-"));
     createdDirs.push(cwd);
 
-    const app = createCliApp({ cwd });
-    const leaderboardResult = await app.run(["leaderboard"]);
-    expect(leaderboardResult).toContain("1. placeholder/model-1");
+    const app = createCliApp({ cwd, env: { R2R_HUB_ENABLED: "false" } });
+    await expect(app.run(["leaderboard"])).rejects.toThrow("Hub is not configured");
   });
 
   it("applies environment overrides when CLI flags are absent", async () => {
@@ -280,8 +283,8 @@ describe("CLI app", () => {
     });
     await app.run(["init"]);
 
-    const runResult = await app.run(["run"]);
-    const runId = runResult.split(":").at(1)?.trim();
+    const runResult = await app.run(["run", "--stub"]);
+    const runId = extractRunId(runResult);
     const reportResult = await app.run(["report", runId ?? ""]);
 
     expect(reportResult).toContain("Target: google/gemini-1.5-pro");
@@ -304,8 +307,8 @@ describe("CLI app", () => {
     });
     await app.run(["init"]);
 
-    const runResult = await app.run(["run", "--target", "openai/gpt-4o-mini", "--complexity", "C1", "--rounds", "1"]);
-    const runId = runResult.split(":").at(1)?.trim();
+    const runResult = await app.run(["run", "--stub", "--target", "openai/gpt-4o-mini", "--complexity", "C1", "--rounds", "1"]);
+    const runId = extractRunId(runResult);
     const reportResult = await app.run(["report", runId ?? ""]);
 
     expect(reportResult).toContain("Target: openai/gpt-4o-mini");
@@ -349,8 +352,8 @@ describe("CLI app", () => {
     });
 
     await app.run(["init"]);
-    const runResult = await app.run(["run"]);
-    const runId = runResult.split(":").at(1)?.trim();
+    const runResult = await app.run(["run", "--stub"]);
+    const runId = extractRunId(runResult);
     expect(runId).toBeTruthy();
 
     const submitResult = await app.run(["submit", runId ?? ""]);
@@ -435,27 +438,20 @@ describe("CLI app", () => {
     expect(calls).toEqual([undefined]);
   });
 
-  it("renders leaderboard as json when requested", async () => {
+  it("fails leaderboard as json when hub is not configured", async () => {
     const cwd = await mkdtemp(join(tmpdir(), "req2rank-leaderboard-json-"));
     createdDirs.push(cwd);
 
-    const app = createCliApp({ cwd });
-    const result = await app.run(["leaderboard", "--output", "json", "--limit", "2"]);
-
-    const parsed = JSON.parse(result) as Array<{ rank: number; model: string; score: number }>;
-    expect(parsed).toHaveLength(2);
-    expect(parsed[0].rank).toBe(1);
+    const app = createCliApp({ cwd, env: { R2R_HUB_ENABLED: "false" } });
+    await expect(app.run(["leaderboard", "--output", "json", "--limit", "2"])).rejects.toThrow("Hub is not configured");
   });
 
-  it("renders leaderboard as table when requested", async () => {
+  it("fails leaderboard as table when hub is not configured", async () => {
     const cwd = await mkdtemp(join(tmpdir(), "req2rank-leaderboard-table-"));
     createdDirs.push(cwd);
 
-    const app = createCliApp({ cwd });
-    const result = await app.run(["leaderboard", "--output", "table", "--limit", "2"]);
-
-    expect(result).toContain("Rank | Model");
-    expect(result).toContain("1 |");
+    const app = createCliApp({ cwd, env: { R2R_HUB_ENABLED: "false" } });
+    await expect(app.run(["leaderboard", "--output", "table", "--limit", "2"])).rejects.toThrow("Hub is not configured");
   });
 
   it("fails leaderboard when output mode is invalid", async () => {
@@ -488,7 +484,7 @@ describe("CLI app", () => {
 
     const app = createCliApp({ cwd });
     await app.run(["init"]);
-    await app.run(["run"]);
+    await app.run(["run", "--stub"]);
 
     const outPath = join(cwd, "latest.md");
     const result = await app.run(["export", "--latest", "--format", "markdown", "--out", outPath]);
@@ -504,8 +500,8 @@ describe("CLI app", () => {
 
     const app = createCliApp({ cwd });
     await app.run(["init"]);
-    const runResult = await app.run(["run"]);
-    const runId = runResult.split(":").at(1)?.trim();
+    const runResult = await app.run(["run", "--stub"]);
+    const runId = extractRunId(runResult);
     expect(runId).toBeTruthy();
 
     const outPath = join(cwd, "report.json");
@@ -523,7 +519,7 @@ describe("CLI app", () => {
 
     const app = createCliApp({ cwd });
     await app.run(["init"]);
-    await app.run(["run"]);
+    await app.run(["run", "--stub"]);
 
     await expect(app.run(["export", "--latest", "--format", "xml", "--out", join(cwd, "x.xml")])).rejects.toThrow(
       "Invalid --format value: xml"
@@ -536,8 +532,8 @@ describe("CLI app", () => {
 
     const app = createCliApp({ cwd });
     await app.run(["init"]);
-    const runResult = await app.run(["run"]);
-    const runId = runResult.split(":").at(1)?.trim();
+    const runResult = await app.run(["run", "--stub"]);
+    const runId = extractRunId(runResult);
     expect(runId).toBeTruthy();
 
     const output = await app.run(["export", runId ?? "", "--format", "markdown"]);
@@ -554,8 +550,8 @@ describe("CLI app", () => {
 
     const app = createCliApp({ cwd });
     await app.run(["init"]);
-    const runResult = await app.run(["run"]);
-    const runId = runResult.split(":").at(1)?.trim();
+    const runResult = await app.run(["run", "--stub"]);
+    const runId = extractRunId(runResult);
     expect(runId).toBeTruthy();
 
     const output = await app.run(["export", runId ?? "", "--format", "json"]);
@@ -573,7 +569,7 @@ describe("CLI app", () => {
 
     const app = createCliApp({ cwd });
     await app.run(["init"]);
-    await app.run(["run"]);
+    await app.run(["run", "--stub"]);
 
     await expect(app.run(["export", "--format", "markdown", "--out", join(cwd, "a.md")])).rejects.toThrow(
       "runId is required unless --latest is used"
@@ -586,8 +582,8 @@ describe("CLI app", () => {
 
     const app = createCliApp({ cwd });
     await app.run(["init"]);
-    const runResult = await app.run(["run"]);
-    const runId = runResult.split(":").at(1)?.trim();
+    const runResult = await app.run(["run", "--stub"]);
+    const runId = extractRunId(runResult);
     expect(runId).toBeTruthy();
 
     await expect(
@@ -604,6 +600,7 @@ describe("CLI app", () => {
 
     const result = await app.run([
       "compare",
+      "--stub",
       "--targets",
       "openai/gpt-4o-mini,anthropic/claude-sonnet-4-20250514",
       "--complexity",
@@ -620,7 +617,7 @@ describe("CLI app", () => {
 
     const app = createCliApp({ cwd });
     await app.run(["init"]);
-    await app.run(["run", "--complexity", "C2"]);
+    await app.run(["run", "--stub", "--complexity", "C2"]);
 
     const output = await app.run(["calibrate", "--write"]);
     expect(output).toContain("C");
@@ -673,8 +670,8 @@ describe("CLI app", () => {
       "utf-8"
     );
 
-    const runResult = await app.run(["run"]);
-    const runId = runResult.split(":").at(1)?.trim();
+    const runResult = await app.run(["run", "--stub"]);
+    const runId = extractRunId(runResult);
     expect(runId).toBeTruthy();
 
     const report = await app.run(["report", runId ?? ""]);

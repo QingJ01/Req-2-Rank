@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { resolveLang } from "../i18n";
 import { t } from "../locales";
 import { resolveGithubOAuthSession } from "../../lib/github-oauth-session";
+import { TokenCopy } from "./token-copy.client";
 
 type AuthPageProps = {
   searchParams?: {
@@ -44,6 +45,7 @@ export default async function AuthPage({ searchParams }: AuthPageProps) {
           </a>
         ) : null}
       </div>
+      {session ? <TokenCopy token={sessionToken ?? ""} lang={lang} /> : null}
       {session ? <p className="hub-muted hub-mt">{t(lang, "hubConfigHint")}</p> : null}
     </section>
   );

@@ -209,7 +209,7 @@ export class PipelineOrchestrator {
           | "newapi"
           | "google"
           | "custom") ?? "openai",
-      apiKey: apiKey || "stub-key",
+      apiKey,
       baseUrl: config.baseUrl ?? undefined
     });
   }

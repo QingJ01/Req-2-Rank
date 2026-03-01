@@ -5,6 +5,11 @@ import { describe, expect, it } from "vitest";
 import { createCliApp } from "./app.js";
 
 describe("cli smoke scenarios", () => {
+  function extractRunId(output: string): string {
+    const firstLine = output.split("\n")[0] ?? "";
+    const match = firstLine.match(/Run completed:\s*(\S+)/);
+    return match?.[1] ?? "";
+  }
   async function withCli(runTest: (cwd: string) => Promise<void>) {
     const cwd = await mkdtemp(join(tmpdir(), "req2rank-cli-smoke-"));
     try {
@@ -32,9 +37,9 @@ describe("cli smoke scenarios", () => {
       const initOutput = await app.run(["init"]);
       expect(initOutput).toContain("Config initialized:");
 
-      const runOutput = await app.run(["run", "--complexity", "C2", "--rounds", "1"]);
+      const runOutput = await app.run(["run", "--stub", "--complexity", "C2", "--rounds", "1"]);
       expect(runOutput).toContain("Run completed:");
-      const runId = runOutput.replace("Run completed: ", "").trim();
+      const runId = extractRunId(runOutput);
       expect(runId.startsWith("run-")).toBe(true);
 
       const historyOutput = await app.run(["history"]);
@@ -64,7 +69,7 @@ describe("cli smoke scenarios", () => {
 
   it("has guarded failure path for missing report run", async () => {
     await withCli(async (cwd) => {
-      const app = createCliApp({ cwd });
+      const app = createCliApp({ cwd, env: { R2R_HUB_ENABLED: "false" } });
       await app.run(["init"]);
 
       await expect(app.run(["report", "missing-run"])).rejects.toThrow("[NOT_FOUND] Run not found: missing-run");
