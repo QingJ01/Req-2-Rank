@@ -54,7 +54,7 @@
 5. 配置 `R2R_REVERIFY_SECRET` 与复验重放 LLM 变量（8 个）。
 6. 发布时执行 `pnpm --filter @req2rank/hub db:migrate`（确保 `hub_submissions` 有 `actor_id`/`evidence_chain` 列）。
 7. 部署前执行 `pnpm --filter @req2rank/hub typecheck && pnpm --filter @req2rank/hub test`。
-8. 对外暴露 `/api/nonces`、`/api/submissions`、`/api/leaderboard/:complexity/:dimension?`、`/api/model/:id`、`/api/submission/:id`、`/api/flag`、`/api/auth/github`。
+8. 对外暴露 `/api/nonces`、`/api/submissions`、`/api/leaderboard/:complexity`、`/api/leaderboard/:complexity/:dimension`、`/api/model/:id`、`/api/submission/:id`、`/api/flag`、`/api/auth/github`。
 9. 配置定时任务周期性调用 `/api/reverification/process`。
 
 ## OAuth 回调检查清单

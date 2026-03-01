@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { handleFlagRequest } from "./app/api/flag/route.js";
-import { handleLeaderboardRequest } from "./app/api/leaderboard/[complexity]/[[dimension]]/route.js";
+import { handleLeaderboardRequest } from "./app/api/leaderboard/shared.js";
 import { handleModelRequest } from "./app/api/model/[id]/route.js";
 import { handleNonceRequest } from "./app/api/nonces/route.js";
 import { handleSubmissionRequest } from "./app/api/submission/[id]/route.js";

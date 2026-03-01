@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { GET as getLeaderboard } from "./leaderboard/[complexity]/[[dimension]]/route.js";
+import { GET as getLeaderboard } from "./leaderboard/[complexity]/route.js";
 import { GET as getModel } from "./model/[id]/route.js";
 import { POST as postNonce } from "./nonces/route.js";
 import { POST as postSubmit } from "./submissions/route.js";

@@ -221,7 +221,9 @@ SSE 实时数据流（Workbench 使用）。
 }
 ```
 
-### `GET /api/leaderboard/:complexity/:dimension?`
+### `GET /api/leaderboard/:complexity`
+
+### `GET /api/leaderboard/:complexity/:dimension`
 
 内部排行榜接口，路径参数表达复杂度与维度，分页/排序仍用 query。
 

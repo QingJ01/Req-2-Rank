@@ -64,7 +64,7 @@
 - OAuth callback rejects missing state unless explicitly allowed.
 - Admin CSRF cookie is scoped to the admin API path.
 - Production requires `R2R_HUB_TOKEN` when OAuth is disabled.
-- Hub routes use `/api/nonces`, `/api/submissions`, and `/api/leaderboard/:complexity/:dimension?`.
+- Hub routes use `/api/nonces`, `/api/submissions`, `/api/leaderboard/:complexity`, and `/api/leaderboard/:complexity/:dimension`.
 - Client/tests/docs updated to match breaking URLs.
 **Tests**:
 - `pnpm --filter @req2rank/hub test -- src/app/api/auth/[...github]/route.test.ts src/lib/auth.test.ts src/app/api/http-handlers.test.ts src/app-routes.test.ts`
