@@ -69,6 +69,13 @@ export interface RouteContext<TBody> {
 
 export type ValidationHook = (actorId: string, authToken?: string) => Promise<void>;
 
+export class AuthError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "AuthError";
+  }
+}
+
 export interface RouteSuccessEnvelope<T> {
   ok: true;
   status: number;
@@ -281,6 +288,14 @@ function validateTimeline(payload: SubmissionRequest): void {
     throw new Error("timeline is required");
   }
 
+  const parseTimestamp = (value: string, field: string): number => {
+    const parsed = Date.parse(value);
+    if (!Number.isFinite(parsed)) {
+      throw new Error(`${field} is invalid`);
+    }
+    return parsed;
+  };
+
   const phaseOrder: Record<SubmissionRequest["evidenceChain"]["timeline"][number]["phase"], number> = {
     generate: 0,
     execute: 1,
@@ -289,23 +304,26 @@ function validateTimeline(payload: SubmissionRequest): void {
   };
 
   let previousPhase = -1;
-  let previousCompletedAt = "";
+  let previousCompletedAt = -1;
   for (const item of timeline) {
     const currentPhase = phaseOrder[item.phase];
     if (currentPhase < previousPhase) {
       throw new Error("timeline phase order is invalid");
     }
 
-    if (item.startedAt > item.completedAt) {
+    const startedAt = parseTimestamp(item.startedAt, "timeline.startedAt");
+    const completedAt = parseTimestamp(item.completedAt, "timeline.completedAt");
+
+    if (startedAt > completedAt) {
       throw new Error("timeline phase duration is invalid");
     }
 
-    if (previousCompletedAt && item.startedAt < previousCompletedAt) {
+    if (previousCompletedAt >= 0 && startedAt < previousCompletedAt) {
       throw new Error("timeline timestamps are not monotonic");
     }
 
     previousPhase = currentPhase;
-    previousCompletedAt = item.completedAt;
+    previousCompletedAt = completedAt;
   }
 }
 
@@ -313,6 +331,8 @@ function validateEvidenceChainSanity(payload: SubmissionRequest): void {
   if (payload.evidenceChain.samples.length === 0) {
     throw new Error("evidence samples are required");
   }
+
+  const maxSampleTextLength = 200_000;
 
   const seenRounds = new Set<number>();
   for (const sample of payload.evidenceChain.samples) {
@@ -326,6 +346,9 @@ function validateEvidenceChainSanity(payload: SubmissionRequest): void {
     }
     requireNonEmpty(sample.requirement, "sample.requirement");
     requireNonEmpty(sample.codeSubmission, "sample.codeSubmission");
+    if (sample.requirement.length > maxSampleTextLength) {
+      throw new Error("sample.requirement too large");
+    }
     if (sample.codeSubmission.length > 200_000) {
       throw new Error("sample.codeSubmission too large");
     }
@@ -532,7 +555,7 @@ const defaultStore = createSubmissionStore();
 export function createAuthValidator(expectedToken: string): ValidationHook {
   return async (_actorId: string, authToken?: string) => {
     if (!authToken || authToken !== expectedToken) {
-      throw new Error("not authorized");
+      throw new AuthError("not authorized");
     }
   };
 }
@@ -575,6 +598,17 @@ export async function getLeaderboardRoute(request: LeaderboardRequest): Promise<
 
 function mapError(error: unknown): RouteErrorEnvelope {
   if (error instanceof Error) {
+    if (error.name === "AuthError") {
+      return {
+        ok: false,
+        status: 401,
+        error: {
+          code: "AUTH_ERROR",
+          message: error.message
+        }
+      };
+    }
+
     const lower = error.message.toLowerCase();
     if (lower.includes("authorized") || lower.includes("forbidden") || lower.includes("auth")) {
       return {

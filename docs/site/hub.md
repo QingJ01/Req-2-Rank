@@ -50,13 +50,13 @@ Hub 是 Req2Rank 的中心化排行榜服务，接收评测提交、执行诚信
 CLI: req2rank submit --latest
         │
         ├─ 1. 向 Hub 申请一次性 Nonce
-        │      POST /api/nonce
+        │      POST /api/nonces
         │
         ├─ 2. 组装证据包
         │      含：评测结果 + 时间线 + 抽样数据 + 环境指纹
         │
         └─ 3. 提交证据包
-               POST /api/submit
+               POST /api/submissions
                     │
                     ├─ 验证 Nonce 有效性
                     ├─ 验证时间线合理性
@@ -114,6 +114,7 @@ R2R_HUB_TOKEN=your-secret-token     # Hub API 认证令牌
 R2R_GITHUB_CLIENT_ID=...            # GitHub OAuth App Client ID
 R2R_GITHUB_CLIENT_SECRET=...        # GitHub OAuth App Secret
 R2R_GITHUB_REDIRECT_URI=http://localhost:3000/api/auth/github
+R2R_GITHUB_OAUTH_GC_INTERVAL_MS=600000  # OAuth 会话 GC 间隔（ms，0 表示关闭）
 ```
 
 2. 执行数据库迁移：
@@ -159,7 +160,7 @@ req2rank leaderboard
 ### 权限配置
 
 - 默认管理员 GitHub 账号：`QingJ01`
-- 通过环境变量 `R2R_ADMIN_GITHUB_LOGIN` 覆盖
+- 通过环境变量 `R2R_ADMIN_GITHUB_LOGIN` 覆盖（支持逗号分隔多个账号）
 - 管理员操作使用 CSRF 校验（`x-csrf-token` + `r2r_admin_csrf` Cookie）
 
 ### 复验模式
@@ -184,6 +185,6 @@ curl https://req2rank.top/api/auth/github?action=login
 # 确认 authUrl 的 redirect_uri 与 R2R_GITHUB_REDIRECT_URI 一致
 
 # 3. 受保护接口未认证时返回 401
-curl -s -o /dev/null -w "%{http_code}" https://req2rank.top/api/leaderboard
+curl -s -o /dev/null -w "%{http_code}" https://req2rank.top/api/leaderboard/all
 # 应返回 401
 ```

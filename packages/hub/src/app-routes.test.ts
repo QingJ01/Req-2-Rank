@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { handleFlagRequest } from "./app/api/flag/route.js";
-import { handleLeaderboardRequest } from "./app/api/leaderboard/route.js";
+import { handleLeaderboardRequest } from "./app/api/leaderboard/[complexity]/[[dimension]]/route.js";
 import { handleModelRequest } from "./app/api/model/[id]/route.js";
-import { handleNonceRequest } from "./app/api/nonce/route.js";
+import { handleNonceRequest } from "./app/api/nonces/route.js";
 import { handleSubmissionRequest } from "./app/api/submission/[id]/route.js";
-import { handleSubmitRequest } from "./app/api/submit/route.js";
+import { handleSubmitRequest } from "./app/api/submissions/route.js";
 
 describe("hub app route shims", () => {
   it("returns auth error without valid token", async () => {
@@ -98,6 +98,7 @@ describe("hub app route shims", () => {
     const leaderboard = await handleLeaderboardRequest({
       actorId: "user-1",
       headers: { authorization: `Bearer ${token}` },
+      params: { complexity: "all" },
       query: { limit: "5", offset: "0", sort: "desc" }
     });
 

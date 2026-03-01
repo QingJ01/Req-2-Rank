@@ -11,6 +11,7 @@ describe("github auth callback route", () => {
     vi.unstubAllGlobals();
     delete process.env.R2R_GITHUB_CLIENT_ID;
     delete process.env.R2R_GITHUB_CLIENT_SECRET;
+    delete process.env.R2R_GITHUB_ALLOW_STATELESS;
     env.NODE_ENV = originalNodeEnv;
     env.R2R_COOKIE_SECURE = originalCookieSecure;
   });
@@ -39,9 +40,15 @@ describe("github auth callback route", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
+    const login = await startGithubAuthLogin({ actorIdHint: "user-1" });
+    expect(login.ok).toBe(true);
+    if (!login.ok) {
+      throw new Error("expected login state");
+    }
+
     const result = await handleGithubAuthCallback({
       code: "oauth-code-1",
-      state: undefined,
+      state: login.data.state,
       actorIdHint: "user-1"
     });
 
@@ -50,7 +57,7 @@ describe("github auth callback route", () => {
       throw new Error("expected auth success");
     }
     expect(result.data.provider).toBe("github");
-    expect(result.data.accessToken).toBe("gho_real_token");
+    expect(result.data.sessionToken.length).toBeGreaterThan(0);
   });
 
   it("returns validation error when GitHub OAuth credentials are missing", async () => {
@@ -88,7 +95,15 @@ describe("github auth callback route", () => {
       })
     );
 
-    const response = await GET(new Request("http://localhost/api/auth/github?code=oauth-code-2"));
+    const login = await startGithubAuthLogin({ actorIdHint: "github-user" });
+    expect(login.ok).toBe(true);
+    if (!login.ok) {
+      throw new Error("expected login state");
+    }
+
+    const response = await GET(
+      new Request(`http://localhost/api/auth/github?code=oauth-code-2&state=${encodeURIComponent(login.data.state)}`)
+    );
     expect(response.status).toBe(302);
     expect(response.headers.get("location")).toContain("/auth");
     expect(response.headers.get("set-cookie")).toContain("r2r_session=");
@@ -115,7 +130,19 @@ describe("github auth callback route", () => {
       })
     );
 
-    const response = await GET(new Request("http://localhost/api/auth/github?code=oauth-code-4&redirect=%2Fadmin%3Flang%3Dzh"));
+    const login = await startGithubAuthLogin({ actorIdHint: "normal-user" });
+    expect(login.ok).toBe(true);
+    if (!login.ok) {
+      throw new Error("expected login state");
+    }
+
+    const response = await GET(
+      new Request(
+        `http://localhost/api/auth/github?code=oauth-code-4&redirect=%2Fadmin%3Flang%3Dzh&state=${encodeURIComponent(
+          login.data.state
+        )}`
+      )
+    );
     expect(response.status).toBe(302);
     expect(response.headers.get("location")).toContain("/auth");
   });
@@ -157,7 +184,15 @@ describe("github auth callback route", () => {
       })
     );
 
-    const callbackResponse = await GET(new Request("http://localhost/api/auth/github?code=oauth-code-secure"));
+    const login = await startGithubAuthLogin({ actorIdHint: "github-user" });
+    expect(login.ok).toBe(true);
+    if (!login.ok) {
+      throw new Error("expected login state");
+    }
+
+    const callbackResponse = await GET(
+      new Request(`http://localhost/api/auth/github?code=oauth-code-secure&state=${encodeURIComponent(login.data.state)}`)
+    );
     expect(callbackResponse.headers.get("set-cookie")).toContain("Secure");
 
     const logoutResponse = await GET(new Request("http://localhost/api/auth/github?action=logout&redirect=/auth"));
@@ -207,6 +242,67 @@ describe("github auth callback route", () => {
       actorIdHint: "user-1"
     });
     expect(badCallback.ok).toBe(false);
+  });
+
+  it("rejects callback when state is missing", async () => {
+    process.env.R2R_GITHUB_CLIENT_ID = "client-id-1";
+    process.env.R2R_GITHUB_CLIENT_SECRET = "client-secret-1";
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("github.com/login/oauth/access_token")) {
+          return new Response(JSON.stringify({ access_token: "gho_missing_state", token_type: "bearer" }), {
+            status: 200,
+            headers: { "content-type": "application/json" }
+          });
+        }
+        return new Response(JSON.stringify({ id: 123, login: "user-1" }), {
+          status: 200,
+          headers: { "content-type": "application/json" }
+        });
+      })
+    );
+
+    const result = await handleGithubAuthCallback({
+      code: "oauth-code-missing-state",
+      state: undefined,
+      actorIdHint: "user-1"
+    });
+
+    expect(result.ok).toBe(false);
+  });
+
+  it("allows stateless callback when explicitly enabled", async () => {
+    process.env.R2R_GITHUB_CLIENT_ID = "client-id-1";
+    process.env.R2R_GITHUB_CLIENT_SECRET = "client-secret-1";
+    process.env.R2R_GITHUB_ALLOW_STATELESS = "true";
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("github.com/login/oauth/access_token")) {
+          return new Response(JSON.stringify({ access_token: "gho_stateless", token_type: "bearer" }), {
+            status: 200,
+            headers: { "content-type": "application/json" }
+          });
+        }
+        return new Response(JSON.stringify({ id: 123, login: "user-1" }), {
+          status: 200,
+          headers: { "content-type": "application/json" }
+        });
+      })
+    );
+
+    const result = await handleGithubAuthCallback({
+      code: "oauth-code-stateless",
+      state: undefined,
+      actorIdHint: "user-1"
+    });
+
+    expect(result.ok).toBe(true);
   });
 
   it("rejects callback when actor hint mismatches verified GitHub login", async () => {

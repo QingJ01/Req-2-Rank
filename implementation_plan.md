@@ -7,7 +7,7 @@
 **Tests**:
 - `pnpm --filter @req2rank/hub test -- src/app/next-pages.test.tsx src/routes.test.ts`
 - `pnpm --filter @req2rank/hub next:build`
-**Status**: In Progress
+**Status**: Complete
 
 ## Stage 2: Harden Public Data Exposure
 **Goal**: Prevent accidental data leakage and unsafe default exposure in public endpoints.
@@ -57,3 +57,29 @@
 - `pnpm --filter @req2rank/hub test -- src/middleware.test.ts src/routes.test.ts src/reverification-worker.test.ts src/app/next-pages.test.tsx`
 - `pnpm --filter @req2rank/hub next:build`
 **Status**: Not Started
+
+## Stage 6: Secure OAuth + URL Simplification
+**Goal**: Harden OAuth/CSRF behavior and move hub APIs to shorter, parameter-light paths.
+**Success Criteria**:
+- OAuth callback rejects missing state unless explicitly allowed.
+- Admin CSRF cookie is scoped to the admin API path.
+- Production requires `R2R_HUB_TOKEN` when OAuth is disabled.
+- Hub routes use `/api/nonces`, `/api/submissions`, and `/api/leaderboard/:complexity/:dimension?`.
+- Client/tests/docs updated to match breaking URLs.
+**Tests**:
+- `pnpm --filter @req2rank/hub test -- src/app/api/auth/[...github]/route.test.ts src/lib/auth.test.ts src/app/api/http-handlers.test.ts src/app-routes.test.ts`
+- `pnpm --filter @req2rank/core test -- src/hub-client.test.ts`
+- `pnpm --filter @req2rank/cli test -- tests/cli-app.test.ts`
+**Status**: Complete
+
+## Stage 7: Auth/Admin Tech Debt Cleanup
+**Goal**: Reduce auth-related debt and tighten validation ergonomics.
+**Success Criteria**:
+- Admin login supports multiple accounts via env.
+- Auth errors are classified without message string matching.
+- OAuth session GC runs periodically without request traffic.
+- Bearer parsing tolerates extra whitespace.
+- Evidence chain limits apply to requirements too.
+**Tests**:
+- `pnpm --filter @req2rank/hub test -- src/lib/auth.test.ts src/routes.test.ts`
+**Status**: Complete

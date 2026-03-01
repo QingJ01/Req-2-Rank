@@ -213,14 +213,14 @@ describe("CLI app", () => {
     createdDirs.push(cwd);
 
     const fetchMock = vi.fn(async (input: string) => {
-      if (input.endsWith("/api/nonce")) {
+      if (input.endsWith("/api/nonces")) {
         return new Response(JSON.stringify({ nonce: "nonce-http", expiresAt: "2026-01-01T00:00:00.000Z" }), {
           status: 200,
           headers: { "content-type": "application/json" }
         });
       }
 
-      if (input.endsWith("/api/submit")) {
+      if (input.endsWith("/api/submissions")) {
         return new Response(JSON.stringify({ status: "accepted", message: "submitted-from-http" }), {
           status: 200,
           headers: { "content-type": "application/json" }

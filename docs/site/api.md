@@ -132,7 +132,7 @@ SSE 实时数据流（Workbench 使用）。
 
 以下接口需要 `Authorization: Bearer <token>` 请求头。
 
-### `POST /api/nonce`
+### `POST /api/nonces`
 
 申请一次性 Nonce（提交前调用）。
 
@@ -160,7 +160,7 @@ SSE 实时数据流（Workbench 使用）。
 - 同一用户同时最多持有 3 个活跃 Nonce
 - 使用后自动作废
 
-### `POST /api/submit`
+### `POST /api/submissions`
 
 提交评测结果。
 
@@ -221,9 +221,12 @@ SSE 实时数据流（Workbench 使用）。
 }
 ```
 
-### `GET /api/leaderboard`
+### `GET /api/leaderboard/:complexity/:dimension?`
 
-内部排行榜接口，支持与公开接口一致的查询参数。
+内部排行榜接口，路径参数表达复杂度与维度，分页/排序仍用 query。
+
+- `complexity`: `C1`/`C2`/`C3`/`C4`/`mixed`/`all`
+- `dimension`（可选）: `functionalCompleteness`/`codeQuality`/`logicAccuracy`/`security`/`engineeringPractice`
 
 ### `GET /api/submission/:id`
 
@@ -276,7 +279,7 @@ SSE 实时数据流（Workbench 使用）。
 
 按以下顺序调试，可快速定位问题：
 
-1. **`POST /api/nonce`** — 验证 Token 可用，确认 Nonce 正常返回
-2. **`POST /api/submit`** — 重点检查 `evidenceChain` 字段的完整性
+1. **`POST /api/nonces`** — 验证 Token 可用，确认 Nonce 正常返回
+2. **`POST /api/submissions`** — 重点检查 `evidenceChain` 字段的完整性
 3. **`GET /api/public/leaderboard`** — 确认提交数据已在排行榜中生效
 4. **`GET /api/submission/:id`** — 检查详情页数据是否完整

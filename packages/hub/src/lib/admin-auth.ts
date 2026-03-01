@@ -25,7 +25,7 @@ export function createCsrfToken(): string {
 }
 
 export function csrfCookieHeader(token: string): string {
-  const segments = [`${ADMIN_CSRF_COOKIE}=${encodeURIComponent(token)}`, "Path=/admin", "SameSite=Strict"];
+  const segments = [`${ADMIN_CSRF_COOKIE}=${encodeURIComponent(token)}`, "Path=/api/admin", "SameSite=Strict"];
   if (process.env.R2R_COOKIE_SECURE === "true" || process.env.NODE_ENV === "production") {
     segments.push("Secure");
   }
@@ -46,12 +46,17 @@ export function validateAdminCsrf(request: Request): boolean {
   return Boolean(cookieToken && headerToken && cookieToken === headerToken);
 }
 
-export function resolveAdminLogin(): string {
-  return process.env.R2R_ADMIN_GITHUB_LOGIN ?? DEFAULT_ADMIN_LOGIN;
+export function resolveAdminLogins(): string[] {
+  const raw = process.env.R2R_ADMIN_GITHUB_LOGIN ?? DEFAULT_ADMIN_LOGIN;
+  return raw
+    .split(",")
+    .map((value) => value.trim())
+    .filter((value) => value.length > 0);
 }
 
 export function isAdminActor(actorId: string): boolean {
-  return actorId.toLowerCase() === resolveAdminLogin().toLowerCase();
+  const normalized = actorId.toLowerCase();
+  return resolveAdminLogins().some((login) => login.toLowerCase() === normalized);
 }
 
 export async function resolveSessionActor(request: Request): Promise<string | undefined> {

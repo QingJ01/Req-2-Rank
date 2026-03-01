@@ -89,14 +89,14 @@ class HttpHubClient implements HubClient {
   }
 
   async requestNonce(): Promise<NonceResponse> {
-    return this.requestJson<NonceResponse>("/api/nonce", {
+    return this.requestJson<NonceResponse>("/api/nonces", {
       method: "POST",
       body: JSON.stringify({})
     });
   }
 
   async submit(payload: SubmissionRequest): Promise<SubmissionResponse> {
-    return this.requestJson<SubmissionResponse>("/api/submit", {
+    return this.requestJson<SubmissionResponse>("/api/submissions", {
       method: "POST",
       body: JSON.stringify(payload)
     });
@@ -104,19 +104,15 @@ class HttpHubClient implements HubClient {
 
   async getLeaderboard(query: LeaderboardQuery): Promise<LeaderboardEntry[]> {
     const normalizedQuery = parseLeaderboardQuery(query);
+    const complexitySegment = encodeURIComponent(normalizedQuery.complexity ?? "all");
+    const dimensionSegment = normalizedQuery.dimension ? `/${encodeURIComponent(normalizedQuery.dimension)}` : "";
     const params = new URLSearchParams({
       limit: String(normalizedQuery.limit),
       offset: String(normalizedQuery.offset),
       sort: normalizedQuery.sort
     });
-    if (normalizedQuery.complexity) {
-      params.set("complexity", normalizedQuery.complexity);
-    }
-    if (normalizedQuery.dimension) {
-      params.set("dimension", normalizedQuery.dimension);
-    }
 
-    return this.requestJson<LeaderboardEntry[]>(`/api/leaderboard?${params.toString()}`, {
+    return this.requestJson<LeaderboardEntry[]>(`/api/leaderboard/${complexitySegment}${dimensionSegment}?${params.toString()}`, {
       method: "GET"
     });
   }

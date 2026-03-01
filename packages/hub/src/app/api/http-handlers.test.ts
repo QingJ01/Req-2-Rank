@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { GET as getLeaderboard } from "./leaderboard/route.js";
+import { GET as getLeaderboard } from "./leaderboard/[complexity]/[[dimension]]/route.js";
 import { GET as getModel } from "./model/[id]/route.js";
-import { POST as postNonce } from "./nonce/route.js";
-import { POST as postSubmit } from "./submit/route.js";
+import { POST as postNonce } from "./nonces/route.js";
+import { POST as postSubmit } from "./submissions/route.js";
 
 async function readJson<T>(response: Response): Promise<T> {
   return (await response.json()) as T;
@@ -13,7 +13,7 @@ describe("http-style app route handlers", () => {
     const token = "dev-token";
 
     const nonceRes = await postNonce(
-      new Request("http://localhost/api/nonce", {
+      new Request("http://localhost/api/nonces", {
         method: "POST",
         headers: {
           authorization: `Bearer ${token}`,
@@ -28,7 +28,7 @@ describe("http-style app route handlers", () => {
     expect(noncePayload.ok).toBe(true);
 
     const submitRes = await postSubmit(
-      new Request("http://localhost/api/submit", {
+      new Request("http://localhost/api/submissions", {
         method: "POST",
         headers: {
           authorization: `Bearer ${token}`,
@@ -60,13 +60,14 @@ describe("http-style app route handlers", () => {
     expect(submitRes.status).toBe(200);
 
     const lbRes = await getLeaderboard(
-      new Request("http://localhost/api/leaderboard?limit=5&offset=0&sort=desc", {
+      new Request("http://localhost/api/leaderboard/all?limit=5&offset=0&sort=desc", {
         method: "GET",
         headers: {
           authorization: `Bearer ${token}`,
           "x-actor-id": "user-1"
         }
-      })
+      }),
+      { params: { complexity: "all" } }
     );
     expect(lbRes.status).toBe(200);
     const lbPayload = await readJson<{ ok: boolean; data: Array<{ model: string }> }>(lbRes);

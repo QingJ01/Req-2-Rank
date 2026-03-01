@@ -1,4 +1,4 @@
-import { ValidationHook, createAuthValidator } from "../routes";
+import { AuthError, ValidationHook, createAuthValidator } from "../routes";
 import { resolveGithubOAuthSession } from "./github-oauth-session";
 
 export interface HeaderMap {
@@ -11,7 +11,7 @@ export function parseBearerToken(headers: HeaderMap): string | undefined {
     return undefined;
   }
 
-  const [scheme, token] = value.split(" ");
+  const [scheme, token] = value.trim().split(/\s+/, 2);
   if (!scheme || !token) {
     return undefined;
   }
@@ -31,7 +31,7 @@ interface GitHubUserResponse {
 export function createGitHubAuthValidator(fetchImpl: typeof fetch = fetch): ValidationHook {
   return async (actorId: string, authToken?: string) => {
     if (!authToken) {
-      throw new Error("not authorized");
+      throw new AuthError("not authorized");
     }
 
     const response = await fetchImpl("https://api.github.com/user", {
@@ -42,16 +42,16 @@ export function createGitHubAuthValidator(fetchImpl: typeof fetch = fetch): Vali
     });
 
     if (!response.ok) {
-      throw new Error("not authorized");
+      throw new AuthError("not authorized");
     }
 
     const user = (await response.json()) as GitHubUserResponse;
     if (!user.login) {
-      throw new Error("not authorized");
+      throw new AuthError("not authorized");
     }
 
     if (actorId !== user.login && actorId !== String(user.id)) {
-      throw new Error("not authorized");
+      throw new AuthError("not authorized");
     }
   };
 }
@@ -59,16 +59,16 @@ export function createGitHubAuthValidator(fetchImpl: typeof fetch = fetch): Vali
 export function createGitHubOAuthSessionValidator(): ValidationHook {
   return async (actorId: string, authToken?: string) => {
     if (!authToken) {
-      throw new Error("not authorized");
+      throw new AuthError("not authorized");
     }
 
     const session = await resolveGithubOAuthSession(authToken);
     if (!session) {
-      throw new Error("not authorized");
+      throw new AuthError("not authorized");
     }
 
     if (session.actorId !== actorId) {
-      throw new Error("not authorized");
+      throw new AuthError("not authorized");
     }
   };
 }
@@ -78,6 +78,13 @@ export function createEnvAuthValidator(): ValidationHook {
     return createGitHubOAuthSessionValidator();
   }
 
-  const expectedToken = process.env.R2R_HUB_TOKEN ?? "dev-token";
+  const expectedToken = process.env.R2R_HUB_TOKEN;
+  if (!expectedToken) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("R2R_HUB_TOKEN is required when OAuth is disabled in production");
+    }
+    return createAuthValidator("dev-token");
+  }
+
   return createAuthValidator(expectedToken);
 }

@@ -3,11 +3,16 @@ import { handleGithubAuthCallback, startGithubAuthLogin } from "../app/api/auth/
 import { createEnvAuthValidator, createGitHubAuthValidator, parseBearerToken } from "./auth.js";
 
 describe("hub auth helpers", () => {
+  const env = process.env as Record<string, string | undefined>;
+  const originalNodeEnv = process.env.NODE_ENV;
+
   afterEach(() => {
     vi.unstubAllGlobals();
     delete process.env.R2R_GITHUB_OAUTH;
     delete process.env.R2R_GITHUB_CLIENT_ID;
     delete process.env.R2R_GITHUB_CLIENT_SECRET;
+    delete process.env.R2R_HUB_TOKEN;
+    env.NODE_ENV = originalNodeEnv;
   });
 
   it("parses bearer token", () => {
@@ -87,5 +92,11 @@ describe("hub auth helpers", () => {
     const validate = createEnvAuthValidator();
     await expect(validate("user-1", callback.data.sessionToken)).resolves.toBeUndefined();
     await expect(validate("other-user", callback.data.sessionToken)).rejects.toThrow("not authorized");
+  });
+
+  it("requires hub token in production when oauth is disabled", () => {
+    env.NODE_ENV = "production";
+    delete process.env.R2R_HUB_TOKEN;
+    expect(() => createEnvAuthValidator()).toThrow("R2R_HUB_TOKEN is required when OAuth is disabled in production");
   });
 });

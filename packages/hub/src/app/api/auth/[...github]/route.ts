@@ -18,7 +18,6 @@ export interface GithubAuthCallbackInput {
 export interface GithubAuthSession {
   provider: "github";
   actorId: string;
-  accessToken: string;
   sessionToken: string;
   issuedAt: string;
 }
@@ -114,6 +113,10 @@ export async function handleGithubAuthCallback(
 ): Promise<RouteEnvelope<GithubAuthSession>> {
   try {
     requireNonEmpty(input.code, "code");
+    const allowStateless = process.env.R2R_GITHUB_ALLOW_STATELESS === "true";
+    if (!input.state && !allowStateless) {
+      throw new Error("OAuth state is required");
+    }
     const clientId = process.env.R2R_GITHUB_CLIENT_ID;
     const clientSecret = process.env.R2R_GITHUB_CLIENT_SECRET;
     requireNonEmpty(clientId ?? "", "R2R_GITHUB_CLIENT_ID");
@@ -186,7 +189,6 @@ export async function handleGithubAuthCallback(
       data: {
         provider: "github",
         actorId,
-        accessToken: oauthAccessToken,
         sessionToken,
         issuedAt: new Date().toISOString()
       }

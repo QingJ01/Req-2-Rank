@@ -65,7 +65,7 @@ describe("HubClient placeholder", () => {
 
   it("uses HTTP hub API when serverUrl and token are provided", async () => {
     const fetchMock = vi.fn(async (input: string, init?: RequestInit) => {
-      if (input.endsWith("/api/nonce")) {
+      if (input.endsWith("/api/nonces")) {
         expect(init?.headers).toMatchObject({
           Authorization: "Bearer token-1"
         });
@@ -75,14 +75,14 @@ describe("HubClient placeholder", () => {
         });
       }
 
-      if (input.endsWith("/api/submit")) {
+      if (input.endsWith("/api/submissions")) {
         return new Response(JSON.stringify({ status: "accepted", message: "submitted" }), {
           status: 200,
           headers: { "content-type": "application/json" }
         });
       }
 
-      if (input.includes("/api/leaderboard")) {
+      if (input.includes("/api/leaderboard/")) {
         return new Response(JSON.stringify([{ rank: 1, model: "openai/gpt-4o-mini", score: 92 }]), {
           status: 200,
           headers: { "content-type": "application/json" }

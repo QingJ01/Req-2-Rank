@@ -673,7 +673,7 @@ sequenceDiagram
     participant Hub as Leaderboard Hub
 
     Note over CLI: 评测开始前
-    CLI->>Hub: POST /api/nonce (申请 session nonce)
+    CLI->>Hub: POST /api/nonces (申请 session nonce)
     Hub->>Hub: 生成 nonce + 绑定用户ID + 过期时间
     Hub-->>CLI: {nonce: "abc123", expiresAt: "..."}
 
@@ -681,7 +681,7 @@ sequenceDiagram
     CLI->>CLI: Pipeline 运行，nonce 写入每一步的元数据
 
     Note over CLI: 评测完成
-    CLI->>Hub: POST /api/submit (证据包)
+    CLI->>Hub: POST /api/submissions (证据包)
     Hub->>Hub: 1. 验证 nonce 有效且未使用
     Hub->>Hub: 2. 验证时间线合理性
     Hub->>Hub: 3. 合理性检查（分数/一致性/CI）
@@ -799,11 +799,11 @@ graph LR
 ### 6.4 排行榜 API
 
 ```
-POST /api/nonce                           # 评测前申请一次性令牌
-POST /api/submit                          # 提交证据包（需认证 + nonce）
-GET  /api/leaderboard                     # 总排行榜
-GET  /api/leaderboard?complexity=C3       # 按复杂度筛选
-GET  /api/leaderboard?dimension=security  # 按维度排序
+POST /api/nonces                          # 评测前申请一次性令牌
+POST /api/submissions                     # 提交证据包（需认证 + nonce）
+GET  /api/leaderboard/all                 # 总排行榜
+GET  /api/leaderboard/C3                  # 按复杂度筛选
+GET  /api/leaderboard/C3/security         # 按维度排序
 GET  /api/model/:name                     # 模型详情（雷达图 + 含 CI 的历史趋势）
 GET  /api/submission/:id                  # 提交详情（含证据链 + 复验状态）
 POST /api/flag/:submissionId              # 举报可疑提交

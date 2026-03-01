@@ -16,6 +16,7 @@ const pendingStates = new Map<string, PendingGithubOAuthState>();
 const activeSessions = new Map<string, ActiveGithubOAuthSession>();
 
 let sqlClient: Sql | undefined;
+let gcTimer: ReturnType<typeof setInterval> | undefined;
 
 function isStrictPersistenceRequired(): boolean {
   return process.env.R2R_OAUTH_STRICT_PERSISTENCE === "true" || process.env.NODE_ENV === "production";
@@ -38,6 +39,37 @@ function getClient(): Sql | undefined {
 
 function randomToken(prefix: string): string {
   return `${prefix}_${randomBytes(24).toString("hex")}`;
+}
+
+function resolveGcIntervalMs(): number | undefined {
+  const raw = process.env.R2R_GITHUB_OAUTH_GC_INTERVAL_MS;
+  if (raw === "0") {
+    return undefined;
+  }
+  if (!raw) {
+    return 10 * 60 * 1000;
+  }
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return 10 * 60 * 1000;
+  }
+  return parsed;
+}
+
+export function startGithubOAuthSessionGC(): void {
+  if (gcTimer || process.env.NODE_ENV === "test") {
+    return;
+  }
+  const intervalMs = resolveGcIntervalMs();
+  if (!intervalMs) {
+    return;
+  }
+  gcTimer = setInterval(() => {
+    void gcGithubOAuthSessionStore().catch(() => undefined);
+  }, intervalMs);
+  if (typeof gcTimer.unref === "function") {
+    gcTimer.unref();
+  }
 }
 
 export async function gcGithubOAuthSessionStore(now = Date.now()): Promise<void> {
@@ -156,3 +188,5 @@ export async function resolveGithubOAuthSession(sessionToken: string): Promise<A
 
   return activeSessions.get(sessionToken);
 }
+
+startGithubOAuthSessionGC();

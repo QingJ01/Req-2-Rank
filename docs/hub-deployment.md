@@ -47,23 +47,25 @@
 
 1. 在部署平台配置 PostgreSQL（`R2R_DATABASE_URL`）和网络访问策略。
 2. 二选一配置认证模式：
-   - OAuth 模式：`R2R_GITHUB_OAUTH=true` + GitHub OAuth 4 个变量（可选 `R2R_ADMIN_GITHUB_LOGIN`）
+   - OAuth 模式：`R2R_GITHUB_OAUTH=true` + GitHub OAuth 4 个变量（可选 `R2R_ADMIN_GITHUB_LOGIN`，支持逗号分隔多个账号）
    - Bearer 模式：`R2R_HUB_TOKEN`
-3. 配置 `R2R_DAILY_SUBMISSION_LIMIT=20`。
-4. 配置 `R2R_REVERIFY_SECRET` 与复验重放 LLM 变量（8 个）。
-5. 发布时执行 `pnpm --filter @req2rank/hub db:migrate`（确保 `hub_submissions` 有 `actor_id`/`evidence_chain` 列）。
-6. 部署前执行 `pnpm --filter @req2rank/hub typecheck && pnpm --filter @req2rank/hub test`。
-7. 对外暴露 `/api/nonce`、`/api/submit`、`/api/leaderboard`、`/api/model/:id`、`/api/submission/:id`、`/api/flag`、`/api/auth/github`。
-8. 配置定时任务周期性调用 `/api/reverification/process`。
+3. 可选：设置 `R2R_GITHUB_OAUTH_GC_INTERVAL_MS`（默认 10 分钟，设为 `0` 关闭 OAuth 会话 GC）。
+4. 配置 `R2R_DAILY_SUBMISSION_LIMIT=20`。
+5. 配置 `R2R_REVERIFY_SECRET` 与复验重放 LLM 变量（8 个）。
+6. 发布时执行 `pnpm --filter @req2rank/hub db:migrate`（确保 `hub_submissions` 有 `actor_id`/`evidence_chain` 列）。
+7. 部署前执行 `pnpm --filter @req2rank/hub typecheck && pnpm --filter @req2rank/hub test`。
+8. 对外暴露 `/api/nonces`、`/api/submissions`、`/api/leaderboard/:complexity/:dimension?`、`/api/model/:id`、`/api/submission/:id`、`/api/flag`、`/api/auth/github`。
+9. 配置定时任务周期性调用 `/api/reverification/process`。
 
 ## OAuth 回调检查清单
 
 1. 在 Vercel 中将 `R2R_GITHUB_REDIRECT_URI` 设为 `https://req2rank.top/api/auth/github`。
 2. 在 GitHub OAuth App 设置中填写同一个 Callback URL。
 3. 更新环境变量后重新部署。
-4. 验证 `GET /api/auth/github?action=login` 返回的 `authUrl` 中 `redirect_uri` 与上述地址一致。
-5. 完成 OAuth 回调后，确认返回 `set-cookie: r2r_session=...`。
-6. 使用回调响应中的 `sessionToken`（Bearer）访问受保护 API，确认 `200`。
+4. 若需要本地调试无 state 的回调，显式设置 `R2R_GITHUB_ALLOW_STATELESS=true`。
+5. 验证 `GET /api/auth/github?action=login` 返回的 `authUrl` 中 `redirect_uri` 与上述地址一致。
+6. 完成 OAuth 回调后，确认返回 `set-cookie: r2r_session=...`。
+7. 使用回调响应中的 `sessionToken`（Bearer）访问受保护 API，确认 `200`。
 
 ## 复验重放 LLM 检查清单
 
@@ -87,6 +89,6 @@
 1. `GET https://req2rank.top/` 能渲染排行榜页面。
 2. `GET https://req2rank.top/api/public/leaderboard` 返回 `200`。
 3. `GET https://req2rank.top/api/auth/github?action=login` 返回 `200` 且包含 `authUrl`。
-4. 不带 Bearer Token 请求 `GET https://req2rank.top/api/leaderboard` 返回 `401`。
+4. 不带 Bearer Token 请求 `GET https://req2rank.top/api/leaderboard/all` 返回 `401`。
 5. 使用 `x-reverify-secret` 触发 `/api/reverification/process`，确认复验流程可执行。
 6. 同一 actor 连续提交到上限后，确认第 21 次被拒绝。
