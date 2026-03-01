@@ -1,6 +1,6 @@
 {
   "name": "@req2rank/cli",
-  "version": "0.1.0",
+  "version": "0.1.0-r7",
   "private": false,
   "type": "module",
   "bin": {

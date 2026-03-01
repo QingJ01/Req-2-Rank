@@ -1,6 +1,6 @@
 {
   "name": "req2rank",
-  "version": "0.1.0",
+  "version": "0.1.0-r7",
   "private": false,
   "type": "module",
   "bin": {
@@ -20,6 +20,6 @@
     "test": "node -e \"process.exit(0)\""
   },
   "dependencies": {
-    "@req2rank/cli": "^0.1.0"
+    "@req2rank/cli": "^0.1.0-r7"
   }
 }
