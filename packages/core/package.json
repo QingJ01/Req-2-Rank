@@ -1,6 +1,6 @@
 {
   "name": "@req2rank/core",
-  "version": "0.1.0-r7",
+  "version": "0.1.0-r8",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

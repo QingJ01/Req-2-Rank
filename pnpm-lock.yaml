@@ -98,7 +98,7 @@ importers:
   packages/req2rank:
     dependencies:
       '@req2rank/cli':
-        specifier: ^0.1.0-r7
+        specifier: ^0.1.0-r8
         version: 0.1.0
 
 packages:
