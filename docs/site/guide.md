@@ -239,6 +239,8 @@ req2rank leaderboard [options]
 | `--limit <count>` | 显示数量 | `10` |
 | `--offset <count>` | 偏移量 | `0` |
 | `--sort <asc\|desc>` | 排序方向 | `desc` |
+| `--complexity <C1\|C2\|C3\|C4\|mixed\|all>` | 复杂度筛选 | `all` |
+| `--dimension <functionalCompleteness\|codeQuality\|logicAccuracy\|security\|engineeringPractice>` | 维度筛选 | — |
 | `--output <text\|table\|json>` | 输出格式 | `text` |
 
 ### 示例
@@ -249,6 +251,9 @@ req2rank leaderboard
 
 # 表格格式查看 Top 20
 req2rank leaderboard --limit 20 --output table
+
+# 查看 C2 安全维度排行榜
+req2rank leaderboard --complexity C2 --dimension security --output table
 ```
 
 ---

@@ -382,7 +382,7 @@ describe("CLI app", () => {
           return { status: "pending", message: "pending" };
         },
         async getLeaderboard(query) {
-          calls.push(`${query.limit}:${query.offset}:${query.sort}`);
+          calls.push(`${query.limit}:${query.offset}:${query.sort}:${query.complexity ?? ""}:${query.dimension ?? ""}`);
           return [{ rank: 1, model: "m", score: 1 }];
         },
         async submitCalibration() {
@@ -391,8 +391,48 @@ describe("CLI app", () => {
       }
     });
 
-    await app.run(["leaderboard", "--limit", "2", "--offset", "1", "--sort", "asc"]);
-    expect(calls).toEqual(["2:1:asc"]);
+    await app.run([
+      "leaderboard",
+      "--limit",
+      "2",
+      "--offset",
+      "1",
+      "--sort",
+      "asc",
+      "--complexity",
+      "C2",
+      "--dimension",
+      "security"
+    ]);
+    expect(calls).toEqual(["2:1:asc:C2:security"]);
+  });
+
+  it("treats leaderboard complexity all as undefined", async () => {
+    const cwd = await mkdtemp(join(tmpdir(), "req2rank-leaderboard-all-"));
+    createdDirs.push(cwd);
+
+    const calls: Array<string | undefined> = [];
+    const app = createCliApp({
+      cwd,
+      hubClient: {
+        async requestNonce() {
+          return { nonce: "nonce", expiresAt: new Date("2026-01-01T00:00:00.000Z").toISOString() };
+        },
+        async submit() {
+          return { status: "pending", message: "pending" };
+        },
+        async getLeaderboard(query) {
+          calls.push(query.complexity);
+          return [{ rank: 1, model: "m", score: 1 }];
+        },
+        async submitCalibration() {
+          return { ok: true };
+        }
+      }
+    });
+
+    await app.run(["leaderboard", "--complexity", "all"]);
+    expect(calls).toEqual([undefined]);
   });
 
   it("renders leaderboard as json when requested", async () => {

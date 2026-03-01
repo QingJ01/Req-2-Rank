@@ -61,6 +61,8 @@ type LeaderboardOptions = {
   limit?: string;
   offset?: string;
   sort?: string;
+  complexity?: string;
+  dimension?: string;
   output?: string;
 };
 
@@ -600,14 +602,19 @@ export function createCliApp(options: CliAppOptions = {}) {
         .option("--limit <count>")
         .option("--offset <count>")
         .option("--sort <asc|desc>")
+        .option("--complexity <C1|C2|C3|C4|mixed|all>")
+        .option("--dimension <functionalCompleteness|codeQuality|logicAccuracy|security|engineeringPractice>")
         .option("--output <text|table|json>")
         .action(async (options: LeaderboardOptions) => {
           const runtimeHubClient = await resolveHubClient();
+          const normalizedComplexity = options.complexity === "all" ? undefined : options.complexity;
           const query = parseLeaderboardQuery(
             {
               limit: options.limit,
               offset: options.offset,
-              sort: options.sort
+              sort: options.sort,
+              complexity: normalizedComplexity,
+              dimension: options.dimension
             },
             {
               limit: "--limit",
