@@ -1,11 +1,11 @@
 import { ExtendedLeaderboardQuery, RouteEnvelope, createLeaderboardHandler } from "../../../routes";
 import { LeaderboardEntry } from "@req2rank/core";
-import { parseBearerToken } from "../../../lib/auth";
+import { resolveAuthTokenFromHeaders } from "../route-helpers";
 import { appStore, appValidate } from "../../state";
 
 export interface LeaderboardRouteInput {
   actorId: string;
-  headers: { authorization?: string };
+  authToken?: string;
   params: { complexity: string; dimension?: string };
   query: Omit<ExtendedLeaderboardQuery, "complexity" | "dimension">;
 }
@@ -23,11 +23,22 @@ function normalizeSegment(value?: string): string | undefined {
 export async function handleLeaderboardRequest(input: LeaderboardRouteInput): Promise<RouteEnvelope<LeaderboardEntry[]>> {
   return handler({
     actorId: input.actorId,
-    authToken: parseBearerToken(input.headers),
+    authToken: input.authToken,
     body: {
       ...input.query,
       complexity: normalizeSegment(input.params.complexity),
       dimension: normalizeSegment(input.params.dimension)
     }
   });
+}
+
+export function resolveLeaderboardAuth(headers: { authorization?: string }): {
+  token?: string;
+  error?: RouteEnvelope<LeaderboardEntry[]>;
+} {
+  const resolved = resolveAuthTokenFromHeaders(headers);
+  if (resolved.error) {
+    return { error: resolved.error as RouteEnvelope<LeaderboardEntry[]> };
+  }
+  return { token: resolved.token };
 }

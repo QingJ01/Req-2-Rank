@@ -44,7 +44,7 @@ export abstract class HttpProviderBase implements LLMProvider {
     await new Promise((resolve) => setTimeout(resolve, ms));
   }
 
-  protected async fetchWithRetry(url: string, init: RequestInit, timeoutMs = 30_000): Promise<Response> {
+  protected async fetchWithRetry(url: string, init: RequestInit, timeoutMs = 120_000): Promise<Response> {
     let timeoutRetriesLeft = 1;
 
     for (let attempt = 0; attempt < 4; attempt += 1) {

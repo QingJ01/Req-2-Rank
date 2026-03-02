@@ -110,12 +110,13 @@ CLI: req2rank submit --latest
 ```bash
 # .env（packages/hub/.env）
 R2R_DATABASE_URL=postgresql://...   # PostgreSQL 连接串
-R2R_HUB_TOKEN=your-secret-token     # Hub API 认证令牌
 R2R_GITHUB_CLIENT_ID=...            # GitHub OAuth App Client ID
 R2R_GITHUB_CLIENT_SECRET=...        # GitHub OAuth App Secret
 R2R_GITHUB_REDIRECT_URI=http://localhost:3000/api/auth/github
 R2R_GITHUB_OAUTH_GC_INTERVAL_MS=600000  # OAuth 会话 GC 间隔（ms，0 表示关闭）
 ```
+
+> Hub 不再使用共享的 `R2R_HUB_TOKEN`。每个账号需要通过 OAuth 或 `/api/tokens` 获取个人 token。
 
 2. 执行数据库迁移：
 
@@ -133,14 +134,16 @@ pnpm --filter @req2rank/hub next:dev
 
 ### 联调 CLI → Hub
 
-在 `req2rank.config.json` 中配置本地 Hub：
+在 `req2rank.config.json` 中配置本地 Hub（每个账号使用自己的 Bearer token）：
 
 ```json
 {
   "hub": {
     "enabled": true,
     "serverUrl": "http://localhost:3000",
-    "token": "<与 R2R_HUB_TOKEN 相同>"
+    "token": "<个人 Bearer token>",
+    "actorId": "<你的 GitHub 登录名>",
+    "userId": "<你的 GitHub 登录名>"
   }
 }
 ```
@@ -152,6 +155,8 @@ req2rank run --complexity C2 --rounds 1
 req2rank submit --latest
 req2rank leaderboard
 ```
+
+Bearer token 可通过 Hub OAuth 登录页生成，或调用 `/api/tokens`（使用 GitHub 访问令牌）创建。每个账号只保留一个活跃 token。
 
 ---
 

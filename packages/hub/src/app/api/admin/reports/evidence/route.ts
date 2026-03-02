@@ -4,8 +4,9 @@ import { requireAdminActor } from "../../../../../lib/admin-auth";
 export async function GET(request: Request): Promise<Response> {
   const auth = await requireAdminActor(request);
   if (!auth.ok) {
+    const code = auth.status === 401 ? "AUTH_MISSING" : "AUTH_ACTOR_MISMATCH";
     return Response.json(
-      { ok: false, status: auth.status, error: { code: "AUTH_ERROR", message: auth.message } },
+      { ok: false, status: auth.status, error: { code, message: auth.message } },
       { status: auth.status }
     );
   }

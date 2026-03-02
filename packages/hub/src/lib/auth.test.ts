@@ -1,6 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { handleGithubAuthCallback, startGithubAuthLogin } from "../app/api/auth/[...github]/route.js";
-import { createEnvAuthValidator, createGitHubAuthValidator, parseBearerToken } from "./auth.js";
+import {
+  createGitHubAuthValidator,
+  createGitHubOAuthSessionValidator,
+  createTokenAuthValidator,
+  parseBearerToken
+} from "./auth.js";
+import { createMemoryTokenStore } from "./token-store.js";
 
 describe("hub auth helpers", () => {
   const env = process.env as Record<string, string | undefined>;
@@ -89,14 +95,19 @@ describe("hub auth helpers", () => {
       throw new Error("expected oauth callback success");
     }
 
-    const validate = createEnvAuthValidator();
+    const validate = createGitHubOAuthSessionValidator();
     await expect(validate("user-1", callback.data.sessionToken)).resolves.toBeUndefined();
     await expect(validate("other-user", callback.data.sessionToken)).rejects.toThrow("not authorized");
   });
 
-  it("requires hub token in production when oauth is disabled", () => {
-    env.NODE_ENV = "production";
-    delete process.env.R2R_HUB_TOKEN;
-    expect(() => createEnvAuthValidator()).toThrow("R2R_HUB_TOKEN is required when OAuth is disabled in production");
+  it("validates per-actor bearer tokens with distinct error codes", async () => {
+    const store = createMemoryTokenStore();
+    const issued = await store.issueToken("user-1");
+    const validate = createTokenAuthValidator(store);
+
+    await expect(validate("user-1", issued.token)).resolves.toBeUndefined();
+    await expect(validate("user-2", issued.token)).rejects.toMatchObject({ code: "AUTH_ACTOR_MISMATCH" });
+    await expect(validate("user-1", "unknown-token")).rejects.toMatchObject({ code: "AUTH_TOKEN_NOT_FOUND" });
+    await expect(validate("user-1", undefined)).rejects.toMatchObject({ code: "AUTH_MISSING" });
   });
 });

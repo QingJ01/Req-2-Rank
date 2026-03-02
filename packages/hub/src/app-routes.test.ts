@@ -5,12 +5,13 @@ import { handleModelRequest } from "./app/api/model/[id]/route.js";
 import { handleNonceRequest } from "./app/api/nonces/route.js";
 import { handleSubmissionRequest } from "./app/api/submission/[id]/route.js";
 import { handleSubmitRequest } from "./app/api/submissions/route.js";
+import { appTokenStore } from "./app/state.js";
 
 describe("hub app route shims", () => {
   it("returns auth error without valid token", async () => {
     const result = await handleNonceRequest({
       actorId: "user-1",
-      headers: {},
+      authToken: undefined,
       body: { userId: "user-1" }
     });
 
@@ -18,15 +19,16 @@ describe("hub app route shims", () => {
     if (result.ok) {
       throw new Error("expected auth error");
     }
-    expect(result.error.code).toBe("AUTH_ERROR");
+    expect(result.error.code).toBe("AUTH_MISSING");
   });
 
   it("supports nonce -> submit -> leaderboard flow via app routes", async () => {
-    const token = "dev-token";
+    const issued = await appTokenStore.issueToken("user-1");
+    const token = issued.token;
 
     const nonce = await handleNonceRequest({
       actorId: "user-1",
-      headers: { authorization: `Bearer ${token}` },
+      authToken: token,
       body: { userId: "user-1" }
     });
     expect(nonce.ok).toBe(true);
@@ -36,7 +38,7 @@ describe("hub app route shims", () => {
 
     const submit = await handleSubmitRequest({
       actorId: "user-1",
-      headers: { authorization: `Bearer ${token}` },
+      authToken: token,
       body: {
         runId: "run-app-1",
         nonce: nonce.data.nonce,
@@ -63,7 +65,7 @@ describe("hub app route shims", () => {
 
     const submissionDetail = await handleSubmissionRequest({
       actorId: "user-1",
-      headers: { authorization: `Bearer ${token}` },
+      authToken: token,
       params: { id: "run-app-1" }
     });
     expect(submissionDetail.ok).toBe(true);
@@ -74,7 +76,7 @@ describe("hub app route shims", () => {
 
     const modelDetail = await handleModelRequest({
       actorId: "user-1",
-      headers: { authorization: `Bearer ${token}` },
+      authToken: token,
       params: { id: "openai%2Fgpt-4o-mini" }
     });
     expect(modelDetail.ok).toBe(true);
@@ -86,7 +88,7 @@ describe("hub app route shims", () => {
 
     const flag = await handleFlagRequest({
       actorId: "user-1",
-      headers: { authorization: `Bearer ${token}` },
+      authToken: token,
       body: { runId: "run-app-1" }
     });
     expect(flag.ok).toBe(true);
@@ -97,7 +99,7 @@ describe("hub app route shims", () => {
 
     const leaderboard = await handleLeaderboardRequest({
       actorId: "user-1",
-      headers: { authorization: `Bearer ${token}` },
+      authToken: token,
       params: { complexity: "all" },
       query: { limit: "5", offset: "0", sort: "desc" }
     });

@@ -87,7 +87,7 @@ describe("hub route skeletons", () => {
     expect(secondSubmit.error.message).toContain("already used");
   });
 
-  it("rejects unauthenticated requests with AUTH_ERROR", async () => {
+  it("rejects unauthenticated requests with AUTH_TOKEN_NOT_FOUND", async () => {
     const store = createSubmissionStore();
     const validate = createAuthValidator("token-1");
     const handler = createNonceHandler(validate, store);
@@ -103,7 +103,7 @@ describe("hub route skeletons", () => {
       throw new Error("expected auth failure");
     }
     expect(result.status).toBe(401);
-    expect(result.error.code).toBe("AUTH_ERROR");
+    expect(result.error.code).toBe("AUTH_TOKEN_NOT_FOUND");
   });
 
   it("returns leaderboard from accepted submissions", async () => {
@@ -804,7 +804,7 @@ describe("hub route skeletons", () => {
       throw new Error("expected auth error envelope");
     }
     expect(result.status).toBe(401);
-    expect(result.error.code).toBe("AUTH_ERROR");
+    expect(result.error.code).toBe("AUTH_TOKEN_NOT_FOUND");
   });
 
   it("returns success envelope for composed leaderboard handler", async () => {
@@ -841,6 +841,6 @@ describe("hub route skeletons", () => {
       throw new Error("expected auth error envelope");
     }
     expect(result.status).toBe(401);
-    expect(result.error.code).toBe("AUTH_ERROR");
+    expect(result.error.code).toBe("AUTH_TOKEN_NOT_FOUND");
   });
 });

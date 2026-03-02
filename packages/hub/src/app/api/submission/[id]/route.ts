@@ -1,17 +1,16 @@
-import { RouteEnvelope, SubmissionDetail } from "../../../../routes";
-import { parseBearerToken } from "../../../../lib/auth";
+import { AuthError, RouteEnvelope, SubmissionDetail } from "../../../../routes";
+import { resolveAuthTokenFromHeaders } from "../../route-helpers";
 import { appStore, appValidate } from "../../../state";
 
 export interface SubmissionRouteInput {
   actorId: string;
-  headers: { authorization?: string };
+  authToken?: string;
   params: { id: string };
 }
 
 export async function handleSubmissionRequest(input: SubmissionRouteInput): Promise<RouteEnvelope<SubmissionDetail>> {
   try {
-    const authToken = parseBearerToken(input.headers);
-    await appValidate(input.actorId, authToken);
+    await appValidate(input.actorId, input.authToken);
     const runId = input.params.id;
     const detail = await appStore.getSubmission(runId);
     if (!detail) {
@@ -31,12 +30,12 @@ export async function handleSubmissionRequest(input: SubmissionRouteInput): Prom
       data: detail
     };
   } catch (error) {
-    if (error instanceof Error && error.message.toLowerCase().includes("authorized")) {
+    if (error instanceof AuthError) {
       return {
         ok: false,
         status: 401,
         error: {
-          code: "AUTH_ERROR",
+          code: error.code,
           message: error.message
         }
       };
@@ -54,11 +53,13 @@ export async function handleSubmissionRequest(input: SubmissionRouteInput): Prom
 }
 
 export async function GET(request: Request, context: { params: { id: string } }): Promise<Response> {
+  const auth = resolveAuthTokenFromHeaders({ authorization: request.headers.get("authorization") ?? undefined });
+  if (auth.error) {
+    return Response.json(auth.error, { status: auth.error.status });
+  }
   const result = await handleSubmissionRequest({
     actorId: request.headers.get("x-actor-id") ?? "anonymous",
-    headers: {
-      authorization: request.headers.get("authorization") ?? undefined
-    },
+    authToken: auth.token,
     params: context.params
   });
 

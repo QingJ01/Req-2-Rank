@@ -70,9 +70,17 @@ export interface RouteContext<TBody> {
 export type ValidationHook = (actorId: string, authToken?: string) => Promise<void>;
 
 export class AuthError extends Error {
-  constructor(message: string) {
+  code:
+    | "AUTH_MISSING"
+    | "AUTH_INVALID_FORMAT"
+    | "AUTH_TOKEN_NOT_FOUND"
+    | "AUTH_TOKEN_REVOKED"
+    | "AUTH_ACTOR_MISMATCH";
+
+  constructor(code: AuthError["code"], message: string) {
     super(message);
     this.name = "AuthError";
+    this.code = code;
   }
 }
 
@@ -86,7 +94,14 @@ export interface RouteErrorEnvelope {
   ok: false;
   status: number;
   error: {
-    code: "VALIDATION_ERROR" | "AUTH_ERROR" | "INTERNAL_ERROR";
+    code:
+      | "VALIDATION_ERROR"
+      | "INTERNAL_ERROR"
+      | "AUTH_MISSING"
+      | "AUTH_INVALID_FORMAT"
+      | "AUTH_TOKEN_NOT_FOUND"
+      | "AUTH_TOKEN_REVOKED"
+      | "AUTH_ACTOR_MISMATCH";
     message: string;
   };
 }
@@ -554,8 +569,11 @@ const defaultStore = createSubmissionStore();
 
 export function createAuthValidator(expectedToken: string): ValidationHook {
   return async (_actorId: string, authToken?: string) => {
-    if (!authToken || authToken !== expectedToken) {
-      throw new AuthError("not authorized");
+    if (!authToken) {
+      throw new AuthError("AUTH_MISSING", "authorization required");
+    }
+    if (authToken !== expectedToken) {
+      throw new AuthError("AUTH_TOKEN_NOT_FOUND", "token not recognized");
     }
   };
 }
@@ -599,12 +617,13 @@ export async function getLeaderboardRoute(request: LeaderboardRequest): Promise<
 function mapError(error: unknown): RouteErrorEnvelope {
   if (error instanceof Error) {
     if (error.name === "AuthError") {
+      const authError = error as AuthError;
       return {
         ok: false,
         status: 401,
         error: {
-          code: "AUTH_ERROR",
-          message: error.message
+          code: authError.code,
+          message: authError.message
         }
       };
     }
@@ -615,7 +634,7 @@ function mapError(error: unknown): RouteErrorEnvelope {
         ok: false,
         status: 401,
         error: {
-          code: "AUTH_ERROR",
+          code: "AUTH_TOKEN_NOT_FOUND",
           message: error.message
         }
       };

@@ -13,7 +13,7 @@ async function processJobs(request: Request): Promise<Response> {
       {
         ok: false,
         status: 401,
-        error: { code: "AUTH_ERROR", message: "reverification secret mismatch" }
+        error: { code: "AUTH_TOKEN_NOT_FOUND", message: "reverification secret mismatch" }
       },
       { status: 401 }
     );

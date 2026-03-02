@@ -29,7 +29,10 @@ export function validatePublicKey(request: Request): boolean {
 }
 
 export function publicAuthErrorResponse(): Response {
-  return Response.json({ ok: false, status: 401, error: { code: "AUTH_ERROR", message: "invalid api key" } }, { status: 401 });
+  return Response.json(
+    { ok: false, status: 401, error: { code: "AUTH_TOKEN_NOT_FOUND", message: "invalid api key" } },
+    { status: 401 }
+  );
 }
 
 function includePublicEvidence(): boolean {

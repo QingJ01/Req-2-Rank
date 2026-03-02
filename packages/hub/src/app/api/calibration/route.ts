@@ -1,4 +1,5 @@
-import { parseBearerToken } from "../../../lib/auth";
+import { AuthError } from "../../../routes";
+import { resolveAuthTokenFromRequest } from "../route-helpers";
 import { appStore, appValidate } from "../../state";
 
 interface CalibrationPayload {
@@ -12,7 +13,11 @@ interface CalibrationPayload {
 export async function GET(request: Request): Promise<Response> {
   try {
     const actorId = request.headers.get("x-actor-id") ?? "anonymous";
-    const authToken = parseBearerToken({ authorization: request.headers.get("authorization") ?? undefined });
+    const auth = resolveAuthTokenFromRequest(request);
+    if (auth.error) {
+      return Response.json(auth.error, { status: auth.error.status });
+    }
+    const authToken = auth.token;
     await appValidate(actorId, authToken);
 
     const url = new URL(request.url);
@@ -28,6 +33,9 @@ export async function GET(request: Request): Promise<Response> {
     const data = await appStore.listCalibrations(limit);
     return Response.json({ ok: true, data }, { status: 200 });
   } catch (error) {
+    if (error instanceof AuthError) {
+      return Response.json({ ok: false, status: 401, error: { code: error.code, message: error.message } }, { status: 401 });
+    }
     return Response.json(
       {
         ok: false,
@@ -42,7 +50,11 @@ export async function GET(request: Request): Promise<Response> {
 export async function POST(request: Request): Promise<Response> {
   try {
     const actorId = request.headers.get("x-actor-id") ?? "anonymous";
-    const authToken = parseBearerToken({ authorization: request.headers.get("authorization") ?? undefined });
+    const auth = resolveAuthTokenFromRequest(request);
+    if (auth.error) {
+      return Response.json(auth.error, { status: auth.error.status });
+    }
+    const authToken = auth.token;
     await appValidate(actorId, authToken);
 
     const payload = (await request.json()) as CalibrationPayload;
@@ -64,6 +76,9 @@ export async function POST(request: Request): Promise<Response> {
 
     return Response.json({ ok: true }, { status: 200 });
   } catch (error) {
+    if (error instanceof AuthError) {
+      return Response.json({ ok: false, status: 401, error: { code: error.code, message: error.message } }, { status: 401 });
+    }
     return Response.json(
       {
         ok: false,

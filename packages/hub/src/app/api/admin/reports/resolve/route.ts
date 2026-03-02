@@ -11,15 +11,16 @@ interface ResolveReportBody {
 export async function POST(request: Request): Promise<Response> {
   const auth = await requireAdminActor(request);
   if (!auth.ok) {
+    const code = auth.status === 401 ? "AUTH_MISSING" : "AUTH_ACTOR_MISMATCH";
     return Response.json(
-      { ok: false, status: auth.status, error: { code: "AUTH_ERROR", message: auth.message } },
+      { ok: false, status: auth.status, error: { code, message: auth.message } },
       { status: auth.status }
     );
   }
 
   if (!validateAdminCsrf(request)) {
     return Response.json(
-      { ok: false, status: 403, error: { code: "AUTH_ERROR", message: "csrf validation failed" } },
+      { ok: false, status: 403, error: { code: "AUTH_ACTOR_MISMATCH", message: "csrf validation failed" } },
       { status: 403 }
     );
   }

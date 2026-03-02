@@ -1,26 +1,32 @@
-import { AuthError, ValidationHook, createAuthValidator } from "../routes";
+import { AuthError, ValidationHook } from "../routes";
 import { resolveGithubOAuthSession } from "./github-oauth-session";
+import { ActorTokenStore } from "./token-store";
 
 export interface HeaderMap {
   authorization?: string;
 }
 
-export function parseBearerToken(headers: HeaderMap): string | undefined {
+export function parseBearerAuth(headers: HeaderMap): { token?: string; errorCode?: AuthError["code"] } {
   const value = headers.authorization;
   if (!value) {
-    return undefined;
+    return { errorCode: "AUTH_MISSING" };
   }
 
   const [scheme, token] = value.trim().split(/\s+/, 2);
   if (!scheme || !token) {
-    return undefined;
+    return { errorCode: "AUTH_INVALID_FORMAT" };
   }
 
   if (scheme.toLowerCase() !== "bearer") {
-    return undefined;
+    return { errorCode: "AUTH_INVALID_FORMAT" };
   }
 
-  return token;
+  return { token };
+}
+
+export function parseBearerToken(headers: HeaderMap): string | undefined {
+  const parsed = parseBearerAuth(headers);
+  return parsed.token;
 }
 
 interface GitHubUserResponse {
@@ -28,30 +34,40 @@ interface GitHubUserResponse {
   login: string;
 }
 
+export interface GitHubActorIdentity {
+  login: string;
+  id: number;
+}
+
+export async function resolveGitHubActor(authToken: string, fetchImpl: typeof fetch = fetch): Promise<GitHubActorIdentity> {
+  const response = await fetchImpl("https://api.github.com/user", {
+    headers: {
+      Authorization: `Bearer ${authToken}`,
+      "User-Agent": "req2rank-hub"
+    }
+  });
+
+  if (!response.ok) {
+    throw new AuthError("AUTH_TOKEN_NOT_FOUND", "not authorized");
+  }
+
+  const user = (await response.json()) as GitHubUserResponse;
+  if (!user.login) {
+    throw new AuthError("AUTH_TOKEN_NOT_FOUND", "not authorized");
+  }
+
+  return { login: user.login, id: user.id };
+}
+
 export function createGitHubAuthValidator(fetchImpl: typeof fetch = fetch): ValidationHook {
   return async (actorId: string, authToken?: string) => {
     if (!authToken) {
-      throw new AuthError("not authorized");
+      throw new AuthError("AUTH_MISSING", "authorization required");
     }
 
-    const response = await fetchImpl("https://api.github.com/user", {
-      headers: {
-        Authorization: `Bearer ${authToken}`,
-        "User-Agent": "req2rank-hub"
-      }
-    });
-
-    if (!response.ok) {
-      throw new AuthError("not authorized");
-    }
-
-    const user = (await response.json()) as GitHubUserResponse;
-    if (!user.login) {
-      throw new AuthError("not authorized");
-    }
-
-    if (actorId !== user.login && actorId !== String(user.id)) {
-      throw new AuthError("not authorized");
+    const identity = await resolveGitHubActor(authToken, fetchImpl);
+    if (actorId !== identity.login && actorId !== String(identity.id)) {
+      throw new AuthError("AUTH_ACTOR_MISMATCH", "not authorized");
     }
   };
 }
@@ -59,32 +75,40 @@ export function createGitHubAuthValidator(fetchImpl: typeof fetch = fetch): Vali
 export function createGitHubOAuthSessionValidator(): ValidationHook {
   return async (actorId: string, authToken?: string) => {
     if (!authToken) {
-      throw new AuthError("not authorized");
+      throw new AuthError("AUTH_MISSING", "authorization required");
     }
 
     const session = await resolveGithubOAuthSession(authToken);
     if (!session) {
-      throw new AuthError("not authorized");
+      throw new AuthError("AUTH_TOKEN_NOT_FOUND", "not authorized");
     }
 
     if (session.actorId !== actorId) {
-      throw new AuthError("not authorized");
+      throw new AuthError("AUTH_ACTOR_MISMATCH", "not authorized");
     }
   };
 }
 
-export function createEnvAuthValidator(): ValidationHook {
-  if (process.env.R2R_GITHUB_OAUTH === "true") {
-    return createGitHubOAuthSessionValidator();
-  }
-
-  const expectedToken = process.env.R2R_HUB_TOKEN;
-  if (!expectedToken) {
-    if (process.env.NODE_ENV === "production") {
-      throw new Error("R2R_HUB_TOKEN is required when OAuth is disabled in production");
+export function createTokenAuthValidator(tokenStore: ActorTokenStore): ValidationHook {
+  return async (actorId: string, authToken?: string) => {
+    if (!authToken) {
+      throw new AuthError("AUTH_MISSING", "authorization required");
     }
-    return createAuthValidator("dev-token");
-  }
 
-  return createAuthValidator(expectedToken);
+    const record = await tokenStore.resolveToken(authToken);
+    if (!record) {
+      throw new AuthError("AUTH_TOKEN_NOT_FOUND", "token not recognized");
+    }
+    if (record.revokedAt) {
+      throw new AuthError("AUTH_TOKEN_REVOKED", "token revoked");
+    }
+    if (record.actorId !== actorId) {
+      throw new AuthError("AUTH_ACTOR_MISMATCH", "actor mismatch");
+    }
+    await tokenStore.touchToken(record.tokenHash);
+  };
+}
+
+export function createEnvAuthValidator(tokenStore: ActorTokenStore): ValidationHook {
+  return createTokenAuthValidator(tokenStore);
 }

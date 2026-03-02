@@ -8,6 +8,7 @@ import {
   resolveGithubOAuthSession
 } from "../../../../lib/github-oauth-session";
 import { isAdminActor, readCookie } from "../../../../lib/admin-auth";
+import { appTokenStore } from "../../../state";
 
 export interface GithubAuthCallbackInput {
   code: string;
@@ -19,6 +20,7 @@ export interface GithubAuthSession {
   provider: "github";
   actorId: string;
   sessionToken: string;
+  cliToken: string;
   issuedAt: string;
 }
 
@@ -92,12 +94,14 @@ function sessionCookieHeader(token: string, maxAge?: number): string {
   return segments.join("; ");
 }
 
-function buildCliConfig(serverUrl: string, token: string): string {
+function buildCliConfig(serverUrl: string, token: string, actorId: string): string {
   const config = JSON.parse(JSON.stringify(defaultConfig)) as Req2RankConfig;
   config.hub = {
     enabled: true,
     serverUrl,
-    token
+    token,
+    actorId,
+    userId: actorId
   };
   return JSON.stringify(config, null, 2);
 }
@@ -182,6 +186,7 @@ export async function handleGithubAuthCallback(
       actorId,
       accessToken: oauthAccessToken
     });
+    const issued = await appTokenStore.issueToken(actorId);
 
     return {
       ok: true,
@@ -190,6 +195,7 @@ export async function handleGithubAuthCallback(
         provider: "github",
         actorId,
         sessionToken,
+        cliToken: issued.token,
         issuedAt: new Date().toISOString()
       }
     };
@@ -263,7 +269,7 @@ export async function GET(request: Request): Promise<Response> {
           ok: false,
           status: 401,
           error: {
-            code: "AUTH_ERROR",
+            code: "AUTH_TOKEN_NOT_FOUND",
             message: "session not found"
           }
         },
@@ -293,7 +299,7 @@ export async function GET(request: Request): Promise<Response> {
           ok: false,
           status: 401,
           error: {
-            code: "AUTH_ERROR",
+            code: "AUTH_TOKEN_NOT_FOUND",
             message: "session not found"
           }
         },
@@ -301,7 +307,8 @@ export async function GET(request: Request): Promise<Response> {
       );
     }
 
-    const cliConfig = buildCliConfig(url.origin, sessionToken);
+    const cliToken = await appTokenStore.issueToken(session.actorId);
+    const cliConfig = buildCliConfig(url.origin, cliToken.token, session.actorId);
     return new Response(cliConfig, {
       status: 200,
       headers: {

@@ -46,6 +46,15 @@ export const oauthSessionsTable = pgTable("hub_oauth_sessions", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
 });
 
+export const actorTokensTable = pgTable("hub_actor_tokens", {
+  tokenHash: text("token_hash").primaryKey(),
+  actorId: text("actor_id").notNull(),
+  label: text("label"),
+  issuedAt: timestamp("issued_at", { withTimezone: true }).notNull().defaultNow(),
+  lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+  revokedAt: timestamp("revoked_at", { withTimezone: true })
+});
+
 export const calibrationSnapshotsTable = pgTable("hub_calibration_snapshots", {
   id: integer("id").generatedAlwaysAsIdentity().primaryKey(),
   source: text("source").notNull().default("local"),
