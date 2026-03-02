@@ -15,10 +15,10 @@ function detectLanguage(code: string): string {
   if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
     return "json";
   }
-  if (trimmed.includes("def ") || trimmed.includes("import ") && trimmed.includes("print(")) {
+  if (trimmed.includes("def ") || (trimmed.includes("import ") && trimmed.includes("print("))) {
     return "py";
   }
-  if (trimmed.includes("export ") || trimmed.includes(":") || trimmed.includes("interface ")) {
+  if (trimmed.includes("export ") || trimmed.includes("interface ") || trimmed.includes(": void") || trimmed.includes(": string") || trimmed.includes(": number")) {
     return "ts";
   }
   if (trimmed.includes("function ") || trimmed.includes("const ") || trimmed.includes("=>")) {
@@ -45,7 +45,7 @@ export function SampleCard({ sample, lang = "zh" }: { sample: Sample; lang?: Lan
 
   return (
     <details className="sample-shell">
-      <summary style={{ cursor: "pointer", fontWeight: 600 }}>{lang === "en" ? `Sample ${sample.roundIndex}` : `样本 ${sample.roundIndex}`}</summary>
+      <summary style={{ cursor: "pointer", fontWeight: 600 }}>{lang === "en" ? `Sample ${sample.roundIndex + 1}` : `样本 ${sample.roundIndex + 1}`}</summary>
       <div>
         <strong>{t(lang, "requirement")}</strong>
         <pre className="sample-pre">

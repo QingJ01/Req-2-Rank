@@ -11,10 +11,9 @@ import { randomUUID } from "node:crypto";
 const C12 = ["C1", "C2"] as const;
 const C1234 = ["C1", "C2", "C3", "C4"] as const;
 
-function resolveComplexity(value: Req2RankConfig["test"]["complexity"], now: Date): "C1" | "C2" | "C3" | "C4" {
+function resolveComplexity(value: Req2RankConfig["test"]["complexity"], roundIndex: number): "C1" | "C2" | "C3" | "C4" {
   if (value === "mixed") {
-    const index = now.getTime() % C1234.length;
-    return C1234[index];
+    return C1234[roundIndex % C1234.length];
   }
 
   return value;
@@ -293,7 +292,7 @@ export class PipelineOrchestrator {
 
     const buildCheckpoint = (): PipelineCheckpoint => ({
       version: 1,
-      createdAt: now.toISOString(),
+      createdAt: new Date().toISOString(),
       totalRounds: rounds,
       completedRounds: roundScores.reduce<PipelineRoundSnapshot[]>((accumulator, item, index) => {
         if (!item) {
@@ -331,8 +330,7 @@ export class PipelineOrchestrator {
 
         const index = pendingRoundIndexes[pendingIndex];
 
-        const roundTime = new Date(now.getTime() + index * 1000);
-        const roundComplexity = resolveComplexity(input.config.test.complexity, roundTime);
+        const roundComplexity = resolveComplexity(input.config.test.complexity, index);
 
         let requirementTitle = `Round ${index + 1}`;
         let requirementText = "";

@@ -429,7 +429,7 @@ export function AdminDashboardClient() {
             <strong>{t(lang, "samples")}</strong>
             <ul>
               {(selectedEvidence.evidenceChain?.samples ?? []).slice(0, 2).map((sample) => (
-                <li key={sample.roundIndex}>#{sample.roundIndex} · {sample.requirement.slice(0, 80)}</li>
+                <li key={sample.roundIndex}>#{sample.roundIndex + 1} · {sample.requirement.slice(0, 80)}</li>
               ))}
             </ul>
           </div>

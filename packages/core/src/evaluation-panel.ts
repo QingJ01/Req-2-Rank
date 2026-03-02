@@ -120,8 +120,6 @@ export function calculateIja(results: EvaluationResult[]): number {
 }
 
 export class EvaluationPanel {
-  private latestDroppedJudges: string[] = [];
-
   private async collectEvaluations(
     requirement: ProjectRequirement,
     execution: ExecutionResult,
@@ -201,7 +199,6 @@ export class EvaluationPanel {
     providerForJudge: (judge: JudgeConfig) => LLMProvider
   ): Promise<EvaluationResult[]> {
     const { results, droppedJudges } = await this.collectEvaluations(requirement, execution, judges, providerForJudge);
-    this.latestDroppedJudges = droppedJudges;
     if (results.length === 0) {
       throw new Error(`all judges failed (${droppedJudges.join(", ")})`);
     }
@@ -214,13 +211,15 @@ export class EvaluationPanel {
     judges: JudgeConfig[],
     providerForJudge: (judge: JudgeConfig) => LLMProvider
   ): Promise<EvaluationPanelOutput> {
-    this.latestDroppedJudges = [];
-    const results = await this.evaluate(requirement, execution, judges, providerForJudge);
+    const { results, droppedJudges } = await this.collectEvaluations(requirement, execution, judges, providerForJudge);
+    if (results.length === 0) {
+      throw new Error(`all judges failed (${droppedJudges.join(", ")})`);
+    }
 
     return {
       results,
       ija: calculateIja(results),
-      droppedJudges: this.latestDroppedJudges
+      droppedJudges
     };
   }
 }

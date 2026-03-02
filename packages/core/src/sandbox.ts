@@ -92,32 +92,26 @@ function extensionForLanguage(language: string): string {
 }
 
 function buildValidationCommand(fileName: string, extension: string): string[] {
+  const precheck = [
+    "const fs = require('node:fs');",
+    `const src = fs.readFileSync('${fileName}', 'utf8');`,
+    "if (!src || src.trim().length === 0) throw new Error('empty submission');",
+    "if (!/\\b(export|function|const|class)\\b/.test(src)) throw new Error('submission lacks executable constructs');"
+  ].join(" ");
+
   if (extension === "js") {
-    return ["node", "--check", fileName];
+    return ["sh", "-c", `node -e "${precheck}" && node --check ${fileName}`];
   }
 
   if (extension === "ts") {
     return [
-      "node",
-      "-e",
-      [
-        "const fs = require('node:fs');",
-        `const src = fs.readFileSync('${fileName}', 'utf8');`,
-        "if (!src || src.trim().length === 0) throw new Error('empty submission');",
-        "if (!/export|function|const|class/.test(src)) throw new Error('submission lacks executable constructs');"
-      ].join(" ")
+      "sh",
+      "-c",
+      `node -e "${precheck}" && npx --yes typescript tsc --noEmit --allowJs --skipLibCheck --strict false --target ES2020 --module commonjs ${fileName}`
     ];
   }
 
-  return [
-    "node",
-    "-e",
-    [
-      "const fs = require('node:fs');",
-      `const src = fs.readFileSync('${fileName}', 'utf8');`,
-      "if (!src || src.trim().length === 0) throw new Error('empty submission');"
-    ].join(" ")
-  ];
+  return ["node", "-e", precheck];
 }
 
 export async function runSandboxedSubmission(input: SandboxedSubmissionInput): Promise<SandboxedSubmissionResult> {
@@ -136,7 +130,7 @@ export async function runSandboxedSubmission(input: SandboxedSubmissionInput): P
       workspacePath,
       workdir: "/workspace",
       command,
-      network: "none",
+      network: extension === "ts" ? "bridge" : "none",
       readOnly: true
     });
 
