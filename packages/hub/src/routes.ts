@@ -406,6 +406,19 @@ export function createSubmissionStore(): SubmissionStore {
       const nowIso = now.toISOString();
 
       if (activeNonceCount(actorId, nowIso) >= 3) {
+        const active = nonces
+          .filter((item) => item.actorId === actorId && !item.usedAt && item.expiresAt > nowIso)
+          .sort((left, right) => left.expiresAt.localeCompare(right.expiresAt));
+        const oldest = active[0];
+        if (oldest) {
+          const index = nonces.indexOf(oldest);
+          if (index >= 0) {
+            nonces.splice(index, 1);
+          }
+        }
+      }
+
+      if (activeNonceCount(actorId, nowIso) >= 3) {
         throw new Error("too many active nonces");
       }
 

@@ -145,6 +145,23 @@ export function createDrizzleSubmissionStore(databaseUrl: string): SubmissionSto
         .where(and(eq(noncesTable.actorId, actorId), isNull(noncesTable.usedAt), gt(noncesTable.expiresAt, now)));
 
       if (Number(activeRows[0]?.count ?? 0) >= 3) {
+        const oldest = await db
+          .select({ nonce: noncesTable.nonce })
+          .from(noncesTable)
+          .where(and(eq(noncesTable.actorId, actorId), isNull(noncesTable.usedAt), gt(noncesTable.expiresAt, now)))
+          .orderBy(noncesTable.expiresAt)
+          .limit(1);
+        if (oldest.length > 0) {
+          await db.delete(noncesTable).where(eq(noncesTable.nonce, oldest[0].nonce));
+        }
+      }
+
+      const refreshedRows = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(noncesTable)
+        .where(and(eq(noncesTable.actorId, actorId), isNull(noncesTable.usedAt), gt(noncesTable.expiresAt, now)));
+
+      if (Number(refreshedRows[0]?.count ?? 0) >= 3) {
         throw new Error("too many active nonces");
       }
 

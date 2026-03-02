@@ -660,6 +660,19 @@ describe("hub route skeletons", () => {
     expect(response.expiresAt).toContain("T");
   });
 
+  it("evicts oldest active nonce when limit reached", async () => {
+    const store = createSubmissionStore();
+    const nonce1 = await store.issueNonce("user-1");
+    const nonce2 = await store.issueNonce("user-1");
+    const nonce3 = await store.issueNonce("user-1");
+
+    const nonce4 = await store.issueNonce("user-1");
+    expect([nonce1.nonce, nonce2.nonce, nonce3.nonce]).not.toContain(nonce4.nonce);
+
+    await expect(store.consumeNonce("user-1", nonce1.nonce)).rejects.toThrow("nonce not found");
+    await expect(store.consumeNonce("user-1", nonce4.nonce)).resolves.toBeUndefined();
+  });
+
   it("validates submit payload and returns accepted response", async () => {
     const response = await postSubmitRoute({
       runId: "run-1",
