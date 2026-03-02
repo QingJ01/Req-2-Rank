@@ -1,4 +1,4 @@
-import { cookies, headers } from "next/headers";
+import { cookies } from "next/headers";
 import { CiChart } from "../../components/ci-chart.client";
 import { MiniTrend } from "../../components/mini-trend.client";
 import { RadarChart } from "../../components/radar-chart.client";
@@ -9,27 +9,16 @@ import { normalizeModelName } from "../../../lib/model-name";
 import { t } from "../../locales";
 
 type ModelPageProps = {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 };
 
 export default async function ModelPage({ params }: ModelPageProps) {
+  const resolvedParams = await params;
   const cookieStore = await cookies();
-  const headerStore = await headers();
   const lang = resolveLang(cookieStore.get("hub.lang")?.value);
-  const rawId = params.id && params.id !== "undefined"
-    ? params.id
-    : (() => {
-        const urlHeader =
-          headerStore.get("x-next-url") ??
-          headerStore.get("x-url") ??
-          headerStore.get("x-original-url") ??
-          headerStore.get("x-invoke-path") ??
-          "";
-        const fromHeader = urlHeader.split("/model/")[1] ?? "";
-        return fromHeader.split("?")[0] ?? "";
-      })();
+  const rawId = resolvedParams.id ?? "";
   const model = normalizeModelName(decodeURIComponent(rawId));
   const submissions = await appStore.listModelSubmissions(model);
   const latest = submissions[0];

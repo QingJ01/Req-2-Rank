@@ -129,7 +129,7 @@ export function createDrizzleSubmissionStore(databaseUrl: string): SubmissionSto
   }
 
   async function resolveAutoReviewReason(payload: SubmissionRequest): Promise<ReverificationReason | undefined> {
-    const model = `${payload.targetProvider}/${payload.targetModel}`;
+    const model = normalizeModelName(payload.targetModel);
     const baselineRows = await db
       .select({ score: submissionsTable.score })
       .from(submissionsTable)

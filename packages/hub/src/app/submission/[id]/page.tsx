@@ -8,15 +8,16 @@ import { SampleCard } from "./sample-card.client";
 import { t } from "../../locales";
 
 type SubmissionPageProps = {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 };
 
 export default async function SubmissionPage({ params }: SubmissionPageProps) {
+  const resolvedParams = await params;
   const cookieStore = await cookies();
   const lang = resolveLang(cookieStore.get("hub.lang")?.value);
-  const detail = await appStore.getSubmission(params.id);
+  const detail = await appStore.getSubmission(resolvedParams.id);
   const timeline = detail?.evidenceChain?.timeline ?? [];
   const samples = detail?.evidenceChain?.samples ?? [];
   const environment = detail?.evidenceChain?.environment;

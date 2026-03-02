@@ -52,15 +52,16 @@ export async function handleSubmissionRequest(input: SubmissionRouteInput): Prom
   }
 }
 
-export async function GET(request: Request, context: { params: { id: string } }): Promise<Response> {
+export async function GET(request: Request, context: { params: Promise<{ id: string }> }): Promise<Response> {
   const auth = await resolveAuthActorFromRequest(request);
   if (auth.error || !auth.actorId) {
     return Response.json(auth.error, { status: auth.error?.status ?? 401 });
   }
+  const resolvedParams = await context.params;
   const result = await handleSubmissionRequest({
     actorId: auth.actorId,
     authToken: auth.token,
-    params: context.params
+    params: resolvedParams
   });
 
   return Response.json(result, { status: result.status });

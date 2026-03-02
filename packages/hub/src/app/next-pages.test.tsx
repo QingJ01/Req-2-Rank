@@ -64,10 +64,10 @@ describe("next-style pages", () => {
     expect(leaderboardHtml).toContain("排行榜");
     expect(leaderboardHtml).toContain("校准建议");
 
-    const modelHtml = renderToStaticMarkup(await ModelPage({ params: { id: "gpt-4o-mini" } }));
+    const modelHtml = renderToStaticMarkup(await ModelPage({ params: Promise.resolve({ id: "gpt-4o-mini" }) }));
     expect(modelHtml).toContain("模型详情");
 
-    const submissionHtml = renderToStaticMarkup(await SubmissionPage({ params: { id: "run-layout-1" } }));
+    const submissionHtml = renderToStaticMarkup(await SubmissionPage({ params: Promise.resolve({ id: "run-layout-1" }) }));
     expect(submissionHtml).toContain("提交详情");
     expect(submissionHtml).toContain("维度得分");
     expect(submissionHtml).toContain("证据链");
@@ -77,7 +77,7 @@ describe("next-style pages", () => {
     expect(submissionHtml).toContain("复制代码");
     expect(submissionHtml).toContain("language-ts");
 
-    const workbenchHtml = renderToStaticMarkup(await WorkbenchPage({ searchParams: {} }));
+    const workbenchHtml = renderToStaticMarkup(await WorkbenchPage({ searchParams: Promise.resolve({}) }));
     expect(workbenchHtml).toContain("实时工作台");
     expect(workbenchHtml).toContain("实时监控");
 
@@ -85,7 +85,7 @@ describe("next-style pages", () => {
     expect(authHtml).toContain("登录管理");
     expect(authHtml).toContain("使用 GitHub 登录");
 
-    const forbiddenHtml = renderToStaticMarkup(await AuthPage({ searchParams: { forbidden: "admin" } }));
+    const forbiddenHtml = renderToStaticMarkup(await AuthPage({ searchParams: Promise.resolve({ forbidden: "admin" }) }));
     expect(forbiddenHtml).toContain("当前账号不具备访问权限");
   });
 

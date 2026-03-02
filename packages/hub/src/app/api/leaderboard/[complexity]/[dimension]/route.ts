@@ -1,16 +1,17 @@
 import { handleLeaderboardRequest } from "../../shared";
 import { resolveAuthActorFromRequest } from "../../../route-helpers";
 
-export async function GET(request: Request, context: { params: { complexity: string; dimension: string } }): Promise<Response> {
+export async function GET(request: Request, context: { params: Promise<{ complexity: string; dimension: string }> }): Promise<Response> {
   const url = new URL(request.url);
   const auth = await resolveAuthActorFromRequest(request);
   if (auth.error || !auth.actorId) {
     return Response.json(auth.error, { status: auth.error?.status ?? 401 });
   }
+  const resolvedParams = await context.params;
   const result = await handleLeaderboardRequest({
     actorId: auth.actorId,
     authToken: auth.token,
-    params: context.params,
+    params: resolvedParams,
     query: {
       limit: url.searchParams.get("limit") ?? undefined,
       offset: url.searchParams.get("offset") ?? undefined,

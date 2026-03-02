@@ -51,12 +51,13 @@ export async function handleModelRequest(input: ModelRouteInput): Promise<RouteE
   }
 }
 
-export async function GET(_request: Request, context: { params: { id: string } }): Promise<Response> {
+export async function GET(_request: Request, context: { params: Promise<{ id: string }> }): Promise<Response> {
   const auth = await resolveAuthActorFromRequest(_request);
   if (auth.error || !auth.actorId) {
     return Response.json(auth.error, { status: auth.error?.status ?? 401 });
   }
-  const rawId = context.params?.id ?? new URL(_request.url).pathname.split("/").pop() ?? "";
+  const resolvedParams = await context.params;
+  const rawId = resolvedParams?.id ?? new URL(_request.url).pathname.split("/").pop() ?? "";
   const result = await handleModelRequest({
     actorId: auth.actorId,
     authToken: auth.token,

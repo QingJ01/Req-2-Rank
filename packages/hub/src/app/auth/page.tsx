@@ -5,17 +5,18 @@ import { resolveGithubOAuthSession } from "../../lib/github-oauth-session";
 import { AuthTokenPanel } from "./token-panel.client";
 
 type AuthPageProps = {
-  searchParams?: {
+  searchParams?: Promise<{
     error?: string;
     forbidden?: string;
-  };
+  }>;
 };
 
 export default async function AuthPage({ searchParams }: AuthPageProps) {
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
   const cookieStore = await cookies();
   const lang = resolveLang(cookieStore.get("hub.lang")?.value);
-  const error = searchParams?.error;
-  const forbidden = searchParams?.forbidden;
+  const error = resolvedSearchParams?.error;
+  const forbidden = resolvedSearchParams?.forbidden;
   const sessionToken = cookieStore.get("r2r_session")?.value;
   const session = sessionToken ? await resolveGithubOAuthSession(sessionToken) : undefined;
 

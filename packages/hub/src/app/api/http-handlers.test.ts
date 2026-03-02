@@ -69,7 +69,7 @@ describe("http-style app route handlers", () => {
           "x-actor-id": "user-1"
         }
       }),
-      { params: { complexity: "all" } }
+      { params: Promise.resolve({ complexity: "all" }) }
     );
     expect(lbRes.status).toBe(200);
     const lbPayload = await readJson<{ ok: boolean; data: Array<{ model: string }> }>(lbRes);
@@ -84,7 +84,7 @@ describe("http-style app route handlers", () => {
           "x-actor-id": "user-1"
         }
       }),
-      { params: { id: "gpt-4o-mini" } }
+      { params: Promise.resolve({ id: "gpt-4o-mini" }) }
     );
     expect(modelRes.status).toBe(200);
     const modelPayload = await readJson<{ ok: boolean; data: { model: string } }>(modelRes);

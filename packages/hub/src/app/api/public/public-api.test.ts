@@ -119,7 +119,7 @@ describe("public API", () => {
 
       const res = await getPublicModel(
         new Request(`http://localhost/api/public/model/${encodeURIComponent(`${provider}/${model}`)}`),
-        { params: { id: encodeURIComponent(`${provider}/${model}`) } }
+        { params: Promise.resolve({ id: encodeURIComponent(`${provider}/${model}`) }) }
       );
 
       expect(res.status).toBe(200);
