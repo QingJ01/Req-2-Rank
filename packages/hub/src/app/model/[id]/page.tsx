@@ -98,3 +98,5 @@ export default async function ModelPage({ params }: ModelPageProps) {
     </section>
   );
 }
+
+export const runtime = "nodejs";

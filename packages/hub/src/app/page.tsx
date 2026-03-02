@@ -168,3 +168,5 @@ export default async function LeaderboardPage({ searchParams }: LeaderboardPageP
     </section>
   );
 }
+
+export const runtime = "nodejs";
