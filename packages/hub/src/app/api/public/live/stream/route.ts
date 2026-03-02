@@ -1,6 +1,7 @@
 import { appStore } from "../../../../state";
 import { readFile } from "node:fs/promises";
 import { publicAuthErrorResponse, toPublicSubmission, validatePublicKey } from "../../shared";
+import { normalizeModelName } from "../../../../../lib/model-name";
 
 const LIVE_CACHE_TTL_MS = 1500;
 
@@ -71,7 +72,8 @@ export async function GET(request: Request): Promise<Response> {
   }
 
   const url = new URL(request.url);
-  const model = url.searchParams.get("model") ?? undefined;
+  const rawModel = url.searchParams.get("model") ?? undefined;
+  const model = rawModel ? normalizeModelName(rawModel) : undefined;
   const limit = url.searchParams.get("limit") ?? "20";
   const complexity = url.searchParams.get("complexity") ?? "C3";
 

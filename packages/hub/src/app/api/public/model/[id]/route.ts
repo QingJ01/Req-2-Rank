@@ -1,4 +1,5 @@
 import { appStore } from "../../../../state";
+import { normalizeModelName } from "../../../../../lib/model-name";
 import { publicAuthErrorResponse, toPublicSubmission, validatePublicKey } from "../../shared";
 
 export async function GET(request: Request, context: { params: { id: string } }): Promise<Response> {
@@ -6,7 +7,7 @@ export async function GET(request: Request, context: { params: { id: string } })
     return publicAuthErrorResponse();
   }
 
-  const model = decodeURIComponent(context.params.id);
+  const model = normalizeModelName(decodeURIComponent(context.params.id));
   const submissions = await appStore.listModelSubmissions(model);
   return Response.json(
     {

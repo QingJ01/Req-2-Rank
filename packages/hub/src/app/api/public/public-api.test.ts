@@ -31,7 +31,7 @@ describe("public API", () => {
   });
 
   it("exposes SSE stream for live updates", async () => {
-    const res = await getPublicLiveStream(new Request("http://localhost/api/public/live/stream?model=openai%2Fgpt-4o-mini"));
+    const res = await getPublicLiveStream(new Request("http://localhost/api/public/live/stream?model=gpt-4o-mini"));
     expect(res.status).toBe(200);
     expect(res.headers.get("content-type")).toContain("text/event-stream");
 

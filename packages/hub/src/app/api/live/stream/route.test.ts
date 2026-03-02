@@ -22,12 +22,12 @@ describe("live stream proxy route", () => {
       .spyOn(globalThis, "fetch")
       .mockResolvedValue(new Response(upstreamBody, { status: 200, headers: { "content-type": "text/event-stream" } }));
 
-    const response = await GET(new Request("http://localhost/api/live/stream?model=openai%2Fgpt-4o-mini&limit=10"));
+    const response = await GET(new Request("http://localhost/api/live/stream?model=gpt-4o-mini&limit=10"));
 
     expect(fetchSpy).toHaveBeenCalledTimes(1);
     const [targetUrl, options] = fetchSpy.mock.calls[0] as [string, RequestInit];
     expect(targetUrl).toContain("/api/public/live/stream?");
-    expect(targetUrl).toContain("model=openai%2Fgpt-4o-mini");
+    expect(targetUrl).toContain("model=gpt-4o-mini");
     expect(targetUrl).toContain("limit=10");
 
     const headers = options.headers as Headers;

@@ -7,6 +7,7 @@ import {
   parseLeaderboardQuery
 } from "@req2rank/core";
 import { LeaderboardAggregationStrategy, resolveLeaderboardStrategy } from "./lib/leaderboard-strategy";
+import { normalizeModelName } from "./lib/model-name";
 import { randomBytes } from "node:crypto";
 
 export interface NonceRequest {
@@ -453,7 +454,7 @@ export function createSubmissionStore(): SubmissionStore {
     },
 
     async saveSubmission(payload: SubmissionRequest, actorId = "system"): Promise<void> {
-      const model = `${payload.targetProvider}/${payload.targetModel}`;
+       const model = normalizeModelName(payload.targetModel);
       const baseline = computeModelBaselineScore(submissions, model, payload.runId);
       const scoreDriftThreshold = resolveModelScoreDriftThreshold();
       const scoreDriftMinSamples = resolveModelScoreDriftMinSamples();
@@ -466,10 +467,10 @@ export function createSubmissionStore(): SubmissionStore {
           ? "top-score"
           : undefined;
 
-      const nextSubmission: StoredSubmission = {
-        runId: payload.runId,
-        actorId,
-        model,
+        const nextSubmission: StoredSubmission = {
+          runId: payload.runId,
+          actorId,
+          model,
         complexity: payload.complexity ?? "mixed",
         score: payload.overallScore,
         ci95: payload.ci95 ?? [payload.overallScore, payload.overallScore],
@@ -531,8 +532,9 @@ export function createSubmissionStore(): SubmissionStore {
     },
 
     async listModelSubmissions(model: string): Promise<SubmissionDetail[]> {
+      const normalized = normalizeModelName(model);
       return submissions
-        .filter((entry) => entry.model === model)
+        .filter((entry) => entry.model === normalized)
         .sort((left, right) => right.submittedAt.localeCompare(left.submittedAt))
         .map((entry) => toDetail(entry));
     },

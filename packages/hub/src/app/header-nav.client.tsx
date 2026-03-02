@@ -64,7 +64,7 @@ export function HeaderNav({ topModels }: HeaderNavProps) {
             key={item.model}
             href={`/model/${encodeURIComponent(item.model)}`}
           >
-            {item.model.split("/")[1] ?? item.model}
+            {item.model}
           </Link>
         ))}
       </div>
@@ -75,7 +75,7 @@ export function HeaderNav({ topModels }: HeaderNavProps) {
             key={`m-${item.model}`}
             href={`/model/${encodeURIComponent(item.model)}`}
           >
-            {item.model.split("/")[1] ?? item.model}
+            {item.model}
           </Link>
         ))}
         {extraModels.length > 0 ? (

@@ -6,6 +6,7 @@ import { LeaderboardEntry, LeaderboardQuery, NonceResponse, SubmissionRequest, p
 import { ExtendedLeaderboardQuery, ReverificationJobDetail, ReverificationReason, SubmissionDetail, SubmissionStore } from "../../routes";
 import { LeaderboardAggregationStrategy, resolveLeaderboardStrategy } from "../leaderboard-strategy";
 import { calibrationSnapshotsTable, noncesTable, reverificationJobsTable, submissionsTable } from "./schema";
+import { normalizeModelName } from "../model-name";
 
 type AggregatedLeaderboardRow = {
   model: string;
@@ -216,7 +217,7 @@ export function createDrizzleSubmissionStore(databaseUrl: string): SubmissionSto
         .values({
           runId: payload.runId,
           actorId,
-          model: `${payload.targetProvider}/${payload.targetModel}`,
+          model: normalizeModelName(payload.targetModel),
           complexity: payload.complexity ?? "mixed",
           score: payload.overallScore,
           ciLow: payload.ci95?.[0] ?? payload.overallScore,
@@ -232,7 +233,7 @@ export function createDrizzleSubmissionStore(databaseUrl: string): SubmissionSto
           target: submissionsTable.runId,
           set: {
             actorId,
-            model: `${payload.targetProvider}/${payload.targetModel}`,
+            model: normalizeModelName(payload.targetModel),
             complexity: payload.complexity ?? "mixed",
             score: payload.overallScore,
             ciLow: payload.ci95?.[0] ?? payload.overallScore,
@@ -386,7 +387,12 @@ export function createDrizzleSubmissionStore(databaseUrl: string): SubmissionSto
 
     async listModelSubmissions(model: string): Promise<SubmissionDetail[]> {
       await ensureSchema();
-      const rows = await db.select().from(submissionsTable).where(eq(submissionsTable.model, model)).orderBy(desc(submissionsTable.submittedAt));
+      const normalized = normalizeModelName(model);
+      const rows = await db
+        .select()
+        .from(submissionsTable)
+        .where(eq(submissionsTable.model, normalized))
+        .orderBy(desc(submissionsTable.submittedAt));
       return rows.map((row) => toDetail(row));
     },
 

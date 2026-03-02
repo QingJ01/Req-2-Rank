@@ -181,7 +181,7 @@ describe("hub route skeletons", () => {
     if (!leaderboard.ok) {
       throw new Error("expected leaderboard success");
     }
-    expect(leaderboard.data[0]?.model).toBe("openai/gpt-4o-mini");
+    expect(leaderboard.data[0]?.model).toBe("gpt-4o-mini");
     expect(leaderboard.data[0]?.score).toBe(90);
 
     const mergedLeaderboard = await leaderboardHandler({
@@ -285,7 +285,7 @@ describe("hub route skeletons", () => {
     if (!leaderboard.ok) {
       throw new Error("expected leaderboard success");
     }
-    expect(leaderboard.data[0]?.model).toBe("anthropic/claude-sonnet");
+    expect(leaderboard.data[0]?.model).toBe("claude-sonnet");
   });
 
   it("supports configurable aggregation strategies", async () => {

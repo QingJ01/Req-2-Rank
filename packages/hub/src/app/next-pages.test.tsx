@@ -51,7 +51,7 @@ describe("next-style pages", () => {
     expect(html).toContain("Req2Rank Hub");
     expect(html).toContain("工作台");
     expect(html).toContain("模型");
-    expect(html).toContain("openai%2Fgpt-4o-mini");
+    expect(html).toContain("gpt-4o-mini");
     expect(html).toContain("child");
   });
 
@@ -60,7 +60,7 @@ describe("next-style pages", () => {
     expect(leaderboardHtml).toContain("排行榜");
     expect(leaderboardHtml).toContain("校准建议");
 
-    const modelHtml = renderToStaticMarkup(await ModelPage({ params: { id: "openai%2Fgpt-4o-mini" } }));
+    const modelHtml = renderToStaticMarkup(await ModelPage({ params: { id: "gpt-4o-mini" } }));
     expect(modelHtml).toContain("模型详情");
 
     const submissionHtml = renderToStaticMarkup(await SubmissionPage({ params: { id: "run-layout-1" } }));

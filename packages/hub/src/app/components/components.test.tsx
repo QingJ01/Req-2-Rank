@@ -34,22 +34,22 @@ describe("viz utils", () => {
 
 describe("route helpers", () => {
   it("parses report and history hash routes", () => {
-    expect(parseHashRoute("#/report/openai%2Fgpt-4o-mini/run-1")).toEqual({
+    expect(parseHashRoute("#/report/gpt-4o-mini/run-1")).toEqual({
       page: "report",
-      model: "openai/gpt-4o-mini",
+      model: "gpt-4o-mini",
       runId: "run-1"
     });
 
-    expect(parseHashRoute("#/history?model=openai%2Fgpt-4o-mini")).toEqual({
+    expect(parseHashRoute("#/history?model=gpt-4o-mini")).toEqual({
       page: "history",
-      model: "openai/gpt-4o-mini"
+      model: "gpt-4o-mini"
     });
   });
 
   it("serializes hash routes", () => {
     expect(toHash({ page: "overview" })).toBe("#/");
-    expect(toHash({ page: "live", model: "openai/gpt-4o-mini", runId: "run-2" })).toBe(
-      "#/live/openai%2Fgpt-4o-mini/run-2"
+    expect(toHash({ page: "live", model: "gpt-4o-mini", runId: "run-2" })).toBe(
+      "#/live/gpt-4o-mini/run-2"
     );
   });
 });
@@ -78,7 +78,7 @@ describe("path helpers", () => {
   it("does not mark unrelated path as active", () => {
     expect(isActivePath("/workbench", "/")).toBe(false);
     expect(isActivePath("/", "/workbench")).toBe(false);
-    expect(isActivePath("/model/openai%2Fgpt-4o-mini", "/workbench")).toBe(false);
+    expect(isActivePath("/model/gpt-4o-mini", "/workbench")).toBe(false);
   });
 });
 

@@ -5,6 +5,7 @@ import { RadarChart } from "../../components/radar-chart.client";
 import { DIMENSION_KEYS, safeScore, statusBadgeClass, statusLabel } from "../../components/viz-utils";
 import { resolveLang } from "../../i18n";
 import { appStore } from "../../state";
+import { normalizeModelName } from "../../../lib/model-name";
 import { t } from "../../locales";
 
 type ModelPageProps = {
@@ -16,7 +17,7 @@ type ModelPageProps = {
 export default async function ModelPage({ params }: ModelPageProps) {
   const cookieStore = await cookies();
   const lang = resolveLang(cookieStore.get("hub.lang")?.value);
-  const model = decodeURIComponent(params.id);
+  const model = normalizeModelName(decodeURIComponent(params.id));
   const submissions = await appStore.listModelSubmissions(model);
   const latest = submissions[0];
   const radarValues = Object.fromEntries(

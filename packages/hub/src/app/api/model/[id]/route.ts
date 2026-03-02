@@ -1,4 +1,5 @@
 import { AuthError, RouteEnvelope, SubmissionDetail } from "../../../../routes";
+import { normalizeModelName } from "../../../../lib/model-name";
 import { resolveAuthActorFromRequest } from "../../route-helpers";
 import { appStore, appValidate } from "../../../state";
 
@@ -16,7 +17,7 @@ export interface ModelRouteInput {
 export async function handleModelRequest(input: ModelRouteInput): Promise<RouteEnvelope<ModelDetailResponse>> {
   try {
     await appValidate(input.actorId, input.authToken);
-    const model = decodeURIComponent(input.params.id);
+    const model = normalizeModelName(decodeURIComponent(input.params.id));
     const submissions = await appStore.listModelSubmissions(model);
 
     return {

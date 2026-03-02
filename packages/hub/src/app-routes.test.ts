@@ -77,13 +77,13 @@ describe("hub app route shims", () => {
     const modelDetail = await handleModelRequest({
       actorId: "user-1",
       authToken: token,
-      params: { id: "openai%2Fgpt-4o-mini" }
+      params: { id: "gpt-4o-mini" }
     });
     expect(modelDetail.ok).toBe(true);
     if (!modelDetail.ok) {
       throw new Error("expected model detail success");
     }
-    expect(modelDetail.data.model).toBe("openai/gpt-4o-mini");
+    expect(modelDetail.data.model).toBe("gpt-4o-mini");
     expect(modelDetail.data.submissions.length).toBeGreaterThan(0);
 
     const flag = await handleFlagRequest({
@@ -108,6 +108,6 @@ describe("hub app route shims", () => {
     if (!leaderboard.ok) {
       throw new Error("expected leaderboard success");
     }
-    expect(leaderboard.data[0]?.model).toBe("openai/gpt-4o-mini");
+    expect(leaderboard.data[0]?.model).toBe("gpt-4o-mini");
   });
 });

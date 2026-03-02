@@ -74,21 +74,21 @@ describe("http-style app route handlers", () => {
     expect(lbRes.status).toBe(200);
     const lbPayload = await readJson<{ ok: boolean; data: Array<{ model: string }> }>(lbRes);
     expect(lbPayload.ok).toBe(true);
-    expect(lbPayload.data[0]?.model).toBe("openai/gpt-4o-mini");
+    expect(lbPayload.data[0]?.model).toBe("gpt-4o-mini");
 
     const modelRes = await getModel(
-      new Request("http://localhost/api/model/openai%2Fgpt-4o-mini", {
+      new Request("http://localhost/api/model/gpt-4o-mini", {
         method: "GET",
         headers: {
           authorization: `Bearer ${token}`,
           "x-actor-id": "user-1"
         }
       }),
-      { params: { id: "openai%2Fgpt-4o-mini" } }
+      { params: { id: "gpt-4o-mini" } }
     );
     expect(modelRes.status).toBe(200);
     const modelPayload = await readJson<{ ok: boolean; data: { model: string } }>(modelRes);
     expect(modelPayload.ok).toBe(true);
-    expect(modelPayload.data.model).toBe("openai/gpt-4o-mini");
+    expect(modelPayload.data.model).toBe("gpt-4o-mini");
   });
 });
