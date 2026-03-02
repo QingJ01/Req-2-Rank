@@ -30,6 +30,8 @@ export const metadata: Metadata = {
   description: "Community-driven leaderboard for LLM coding capability evaluation. Submit scores, compare models, and explore verification data.",
 };
 
+export const runtime = "nodejs";
+
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
