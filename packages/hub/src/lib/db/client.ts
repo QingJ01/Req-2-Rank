@@ -321,8 +321,8 @@ export function createDrizzleSubmissionStore(databaseUrl: string): SubmissionSto
 
     async countSubmissionsForActorDay(actorId: string, dayIsoDate: string): Promise<number> {
       await ensureSchema();
-      const dayStart = new Date(`${dayIsoDate}T00:00:00.000Z`);
-      const dayEnd = new Date(`${dayIsoDate}T23:59:59.999Z`);
+      const dayStart = `${dayIsoDate}T00:00:00.000Z`;
+      const dayEnd = `${dayIsoDate}T23:59:59.999Z`;
       const rows = await db
         .select({ count: sql<number>`count(*)` })
         .from(submissionsTable)
