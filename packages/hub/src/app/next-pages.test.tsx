@@ -3,8 +3,12 @@ import { renderToStaticMarkup } from "react-dom/server";
 
 vi.mock("next/headers", () => ({
   cookies: () => Promise.resolve({
-    get: (name: string) => name === "hub.lang" ? { value: "zh" } : undefined,
+    get: (name: string) => (name === "hub.lang" ? { value: "zh" } : undefined)
   }),
+  headers: () =>
+    Promise.resolve({
+      get: () => undefined
+    })
 }));
 
 vi.mock("next/navigation", () => ({

@@ -56,10 +56,11 @@ export async function GET(_request: Request, context: { params: { id: string } }
   if (auth.error || !auth.actorId) {
     return Response.json(auth.error, { status: auth.error?.status ?? 401 });
   }
+  const rawId = context.params?.id ?? new URL(_request.url).pathname.split("/").pop() ?? "";
   const result = await handleModelRequest({
     actorId: auth.actorId,
     authToken: auth.token,
-    params: context.params
+    params: { id: rawId }
   });
 
   return Response.json(result, { status: result.status });
