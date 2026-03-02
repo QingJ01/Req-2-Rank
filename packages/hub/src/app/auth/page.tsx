@@ -3,6 +3,7 @@ import { resolveLang } from "../i18n";
 import { t } from "../locales";
 import { resolveGithubOAuthSession } from "../../lib/github-oauth-session";
 import { TokenCopy } from "./token-copy.client";
+import { ConfigGenerator } from "./config-generator.client";
 
 type AuthPageProps = {
   searchParams?: {
@@ -47,6 +48,7 @@ export default async function AuthPage({ searchParams }: AuthPageProps) {
       </div>
       {session ? <TokenCopy token={sessionToken ?? ""} lang={lang} /> : null}
       {session ? <p className="hub-muted hub-mt">{t(lang, "hubConfigHint")}</p> : null}
+      <ConfigGenerator lang={lang} sessionToken={sessionToken} />
     </section>
   );
 }

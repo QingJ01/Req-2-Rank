@@ -1055,6 +1055,63 @@ a:hover {
   color: var(--text-main);
 }
 
+.hub-config-generator {
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px dashed var(--border-light);
+}
+
+.hub-config-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  margin-top: 12px;
+  margin-bottom: 16px;
+}
+
+.hub-config-section {
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.hub-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+  font-size: 0.85rem;
+}
+
+.hub-field-inline {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
+.hub-field input,
+.hub-field select,
+.hub-field textarea {
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-light);
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--text-main);
+  font-size: 0.85rem;
+}
+
+.hub-config-actions {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.hub-config-preview {
+  font-family: "JetBrains Mono", "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
+  min-height: 240px;
+}
+
 .hub-action-grid {
   display: grid;
   gap: 8px;
