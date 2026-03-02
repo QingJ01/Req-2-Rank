@@ -1,5 +1,5 @@
 import { AuthError } from "../../../routes";
-import { resolveAuthTokenFromRequest } from "../route-helpers";
+import { resolveAuthActorFromRequest } from "../route-helpers";
 import { appStore, appValidate } from "../../state";
 
 interface CalibrationPayload {
@@ -12,13 +12,11 @@ interface CalibrationPayload {
 
 export async function GET(request: Request): Promise<Response> {
   try {
-    const actorId = request.headers.get("x-actor-id") ?? "anonymous";
-    const auth = resolveAuthTokenFromRequest(request);
-    if (auth.error) {
-      return Response.json(auth.error, { status: auth.error.status });
+    const auth = await resolveAuthActorFromRequest(request);
+    if (auth.error || !auth.actorId) {
+      return Response.json(auth.error, { status: auth.error?.status ?? 401 });
     }
-    const authToken = auth.token;
-    await appValidate(actorId, authToken);
+    await appValidate(auth.actorId, auth.token);
 
     const url = new URL(request.url);
     const rawLimit = url.searchParams.get("limit") ?? "20";
@@ -49,13 +47,11 @@ export async function GET(request: Request): Promise<Response> {
 
 export async function POST(request: Request): Promise<Response> {
   try {
-    const actorId = request.headers.get("x-actor-id") ?? "anonymous";
-    const auth = resolveAuthTokenFromRequest(request);
-    if (auth.error) {
-      return Response.json(auth.error, { status: auth.error.status });
+    const auth = await resolveAuthActorFromRequest(request);
+    if (auth.error || !auth.actorId) {
+      return Response.json(auth.error, { status: auth.error?.status ?? 401 });
     }
-    const authToken = auth.token;
-    await appValidate(actorId, authToken);
+    await appValidate(auth.actorId, auth.token);
 
     const payload = (await request.json()) as CalibrationPayload;
     if (!payload?.recommendedComplexity || !payload.reason) {
@@ -67,7 +63,7 @@ export async function POST(request: Request): Promise<Response> {
 
     await appStore.saveCalibration({
       source: payload.source ?? "cli",
-      actorId,
+      actorId: auth.actorId,
       recommendedComplexity: payload.recommendedComplexity,
       reason: payload.reason,
       averageScore: payload.averageScore,

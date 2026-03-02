@@ -68,7 +68,7 @@ export function AuthTokenPanel({ lang, actorId }: AuthTokenPanelProps) {
       {loading ? <p className="hub-muted">{lang === "en" ? "Generating token..." : "正在生成 token..."}</p> : null}
       {error ? <p className="hub-muted">{lang === "en" ? `Token error: ${error}` : `Token 错误：${error}`}</p> : null}
       {token ? <TokenCopy token={token} lang={lang} /> : null}
-      <ConfigGenerator lang={lang} initialHubToken={token} actorId={actorId} />
+      <ConfigGenerator lang={lang} initialHubToken={token} />
     </div>
   );
 }

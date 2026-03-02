@@ -1,5 +1,5 @@
 import { NonceRequest, RouteEnvelope, createNonceHandler } from "../../../routes";
-import { resolveAuthTokenFromRequest } from "../route-helpers";
+import { resolveAuthActorFromRequest } from "../route-helpers";
 import { appStore, appValidate } from "../../state";
 
 export interface NonceRouteInput {
@@ -19,14 +19,13 @@ export async function handleNonceRequest(input: NonceRouteInput): Promise<RouteE
 }
 
 export async function POST(request: Request): Promise<Response> {
-  const actorId = request.headers.get("x-actor-id") ?? "anonymous";
   const body = (await request.json()) as NonceRequest;
-  const auth = resolveAuthTokenFromRequest(request);
-  if (auth.error) {
-    return Response.json(auth.error, { status: auth.error.status });
+  const auth = await resolveAuthActorFromRequest(request);
+  if (auth.error || !auth.actorId) {
+    return Response.json(auth.error, { status: auth.error?.status ?? 401 });
   }
   const result = await handleNonceRequest({
-    actorId,
+    actorId: auth.actorId,
     authToken: auth.token,
     body
   });

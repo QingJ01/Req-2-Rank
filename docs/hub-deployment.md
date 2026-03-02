@@ -65,7 +65,7 @@
 4. 若需要本地调试无 state 的回调，显式设置 `R2R_GITHUB_ALLOW_STATELESS=true`。
 5. 验证 `GET /api/auth/github?action=login` 返回的 `authUrl` 中 `redirect_uri` 与上述地址一致。
 6. 完成 OAuth 回调后，确认返回 `set-cookie: r2r_session=...`。
-7. 使用回调响应中的 `sessionToken`（Bearer）访问受保护 API，确认 `200`。
+7. 通过 `/api/tokens` 生成个人 token，用该 token 访问受保护 API，确认 `200`。
 
 ## 复验重放 LLM 检查清单
 
@@ -78,7 +78,7 @@
 ## 每日限频检查清单（20）
 
 1. 设置 `R2R_DAILY_SUBMISSION_LIMIT=20`。
-2. 用同一 `actorId` 连续提交 20 次，预期都可接受。
+2. 用同一 token 连续提交 20 次，预期都可接受。
 3. 第 21 次提交预期返回 `400`，错误信息包含 `daily submission limit exceeded (20)`。
 4. 次日（UTC 日期变更）再次提交，计数应重置。
 

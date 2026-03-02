@@ -1,5 +1,5 @@
 import { AuthError, RouteEnvelope, SubmissionDetail } from "../../../../routes";
-import { resolveAuthTokenFromHeaders } from "../../route-helpers";
+import { resolveAuthActorFromRequest } from "../../route-helpers";
 import { appStore, appValidate } from "../../../state";
 
 export interface SubmissionRouteInput {
@@ -53,12 +53,12 @@ export async function handleSubmissionRequest(input: SubmissionRouteInput): Prom
 }
 
 export async function GET(request: Request, context: { params: { id: string } }): Promise<Response> {
-  const auth = resolveAuthTokenFromHeaders({ authorization: request.headers.get("authorization") ?? undefined });
-  if (auth.error) {
-    return Response.json(auth.error, { status: auth.error.status });
+  const auth = await resolveAuthActorFromRequest(request);
+  if (auth.error || !auth.actorId) {
+    return Response.json(auth.error, { status: auth.error?.status ?? 401 });
   }
   const result = await handleSubmissionRequest({
-    actorId: request.headers.get("x-actor-id") ?? "anonymous",
+    actorId: auth.actorId,
     authToken: auth.token,
     params: context.params
   });

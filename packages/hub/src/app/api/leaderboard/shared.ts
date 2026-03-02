@@ -1,6 +1,5 @@
 import { ExtendedLeaderboardQuery, RouteEnvelope, createLeaderboardHandler } from "../../../routes";
 import { LeaderboardEntry } from "@req2rank/core";
-import { resolveAuthTokenFromHeaders } from "../route-helpers";
 import { appStore, appValidate } from "../../state";
 
 export interface LeaderboardRouteInput {
@@ -30,15 +29,4 @@ export async function handleLeaderboardRequest(input: LeaderboardRouteInput): Pr
       dimension: normalizeSegment(input.params.dimension)
     }
   });
-}
-
-export function resolveLeaderboardAuth(headers: { authorization?: string }): {
-  token?: string;
-  error?: RouteEnvelope<LeaderboardEntry[]>;
-} {
-  const resolved = resolveAuthTokenFromHeaders(headers);
-  if (resolved.error) {
-    return { error: resolved.error as RouteEnvelope<LeaderboardEntry[]> };
-  }
-  return { token: resolved.token };
 }

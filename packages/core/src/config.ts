@@ -60,9 +60,7 @@ export const req2rankConfigSchema = z.object({
     .object({
       enabled: z.boolean().default(false),
       serverUrl: z.string().url().optional(),
-      token: z.string().optional(),
-      actorId: z.string().optional(),
-      userId: z.string().optional()
+      token: z.string().optional()
     })
     .optional()
 });

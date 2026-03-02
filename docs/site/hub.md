@@ -141,9 +141,7 @@ pnpm --filter @req2rank/hub next:dev
   "hub": {
     "enabled": true,
     "serverUrl": "http://localhost:3000",
-    "token": "<个人 Bearer token>",
-    "actorId": "<你的 GitHub 登录名>",
-    "userId": "<你的 GitHub 登录名>"
+    "token": "<个人 Bearer token>"
   }
 }
 ```

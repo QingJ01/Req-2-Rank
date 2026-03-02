@@ -370,13 +370,11 @@ export function createCliApp(options: CliAppOptions = {}) {
 
     const serverUrl = env.R2R_HUB_SERVER_URL ?? config.hub?.serverUrl;
     const token = env.R2R_HUB_TOKEN ?? config.hub?.token;
-    const actorId = env.R2R_HUB_ACTOR_ID ?? config.hub?.actorId;
-    const userId = env.R2R_HUB_USER_ID ?? config.hub?.userId;
     if (!serverUrl || !token) {
       throw new Error("Hub is enabled but serverUrl/token is missing");
     }
 
-    return createHubClient({ serverUrl, token, actorId, userId });
+    return createHubClient({ serverUrl, token });
   }
 
   return {

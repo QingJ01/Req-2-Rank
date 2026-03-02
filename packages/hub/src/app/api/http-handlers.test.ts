@@ -19,10 +19,10 @@ describe("http-style app route handlers", () => {
         method: "POST",
         headers: {
           authorization: `Bearer ${token}`,
-          "x-actor-id": "user-1",
+          "x-actor-id": "user-2",
           "content-type": "application/json"
         },
-        body: JSON.stringify({ userId: "user-1" })
+        body: JSON.stringify({ userId: "user-2" })
       })
     );
     expect(nonceRes.status).toBe(200);

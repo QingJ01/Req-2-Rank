@@ -94,14 +94,12 @@ function sessionCookieHeader(token: string, maxAge?: number): string {
   return segments.join("; ");
 }
 
-function buildCliConfig(serverUrl: string, token: string, actorId: string): string {
+function buildCliConfig(serverUrl: string, token: string): string {
   const config = JSON.parse(JSON.stringify(defaultConfig)) as Req2RankConfig;
   config.hub = {
     enabled: true,
     serverUrl,
-    token,
-    actorId,
-    userId: actorId
+    token
   };
   return JSON.stringify(config, null, 2);
 }
@@ -308,7 +306,7 @@ export async function GET(request: Request): Promise<Response> {
     }
 
     const cliToken = await appTokenStore.issueToken(session.actorId);
-    const cliConfig = buildCliConfig(url.origin, cliToken.token, session.actorId);
+    const cliConfig = buildCliConfig(url.origin, cliToken.token);
     return new Response(cliConfig, {
       status: 200,
       headers: {

@@ -49,10 +49,9 @@ describe("HubClient fallback", () => {
     const fetchMock = vi.fn(async (input: string, init?: RequestInit) => {
       if (input.endsWith("/api/nonces")) {
         expect(init?.headers).toMatchObject({
-          Authorization: "Bearer token-1",
-          "x-actor-id": "actor-1"
+          Authorization: "Bearer token-1"
         });
-        expect(init?.body).toBe(JSON.stringify({ userId: "actor-1" }));
+        expect(init?.body).toBe(JSON.stringify({}));
         return new Response(JSON.stringify({ nonce: "nonce-http", expiresAt: "2026-01-01T00:00:00.000Z" }), {
           status: 200,
           headers: { "content-type": "application/json" }
@@ -87,8 +86,7 @@ describe("HubClient fallback", () => {
 
     const client = createHubClient({
       serverUrl: "https://hub.example.com",
-      token: "token-1",
-      actorId: "actor-1"
+      token: "token-1"
     });
 
     const nonce = await client.requestNonce();

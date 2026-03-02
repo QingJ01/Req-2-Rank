@@ -7,7 +7,6 @@ import { t } from "../locales";
 type ConfigGeneratorProps = {
   lang: Lang;
   initialHubToken?: string;
-  actorId?: string;
 };
 
 type JudgeConfig = {
@@ -18,7 +17,7 @@ type JudgeConfig = {
   weight: string;
 };
 
-export function ConfigGenerator({ lang, initialHubToken, actorId }: ConfigGeneratorProps) {
+export function ConfigGenerator({ lang, initialHubToken }: ConfigGeneratorProps) {
   const [targetProvider, setTargetProvider] = useState("openai");
   const [targetModel, setTargetModel] = useState("gpt-4o-mini");
   const [targetApiKey, setTargetApiKey] = useState("");
@@ -81,8 +80,7 @@ export function ConfigGenerator({ lang, initialHubToken, actorId }: ConfigGenera
       ? {
           enabled: true,
           serverUrl: hubServerUrl.trim(),
-          ...(includeToken && hubToken ? { token: hubToken } : {}),
-          ...(actorId ? { actorId, userId: actorId } : {})
+          ...(includeToken && hubToken ? { token: hubToken } : {})
         }
       : { enabled: false };
 
@@ -115,8 +113,7 @@ export function ConfigGenerator({ lang, initialHubToken, actorId }: ConfigGenera
     hubEnabled,
     hubServerUrl,
     hubToken,
-    includeToken,
-    actorId
+    includeToken
   ]);
 
   async function handleCopy(): Promise<void> {

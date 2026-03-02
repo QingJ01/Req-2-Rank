@@ -1,14 +1,14 @@
-import { handleLeaderboardRequest, resolveLeaderboardAuth } from "../../shared";
+import { handleLeaderboardRequest } from "../../shared";
+import { resolveAuthActorFromRequest } from "../../../route-helpers";
 
 export async function GET(request: Request, context: { params: { complexity: string; dimension: string } }): Promise<Response> {
-  const actorId = request.headers.get("x-actor-id") ?? "anonymous";
   const url = new URL(request.url);
-  const auth = resolveLeaderboardAuth({ authorization: request.headers.get("authorization") ?? undefined });
-  if (auth.error) {
-    return Response.json(auth.error, { status: auth.error.status });
+  const auth = await resolveAuthActorFromRequest(request);
+  if (auth.error || !auth.actorId) {
+    return Response.json(auth.error, { status: auth.error?.status ?? 401 });
   }
   const result = await handleLeaderboardRequest({
-    actorId,
+    actorId: auth.actorId,
     authToken: auth.token,
     params: context.params,
     query: {

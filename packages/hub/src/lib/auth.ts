@@ -90,25 +90,27 @@ export function createGitHubOAuthSessionValidator(): ValidationHook {
 }
 
 export function createTokenAuthValidator(tokenStore: ActorTokenStore): ValidationHook {
-  return async (actorId: string, authToken?: string) => {
-    if (!authToken) {
-      throw new AuthError("AUTH_MISSING", "authorization required");
-    }
-
-    const record = await tokenStore.resolveToken(authToken);
-    if (!record) {
-      throw new AuthError("AUTH_TOKEN_NOT_FOUND", "token not recognized");
-    }
-    if (record.revokedAt) {
-      throw new AuthError("AUTH_TOKEN_REVOKED", "token revoked");
-    }
-    if (record.actorId !== actorId) {
-      throw new AuthError("AUTH_ACTOR_MISMATCH", "actor mismatch");
-    }
-    await tokenStore.touchToken(record.tokenHash);
+  return async (_actorId: string, authToken?: string) => {
+    await resolveActorIdFromToken(tokenStore, authToken);
   };
 }
 
 export function createEnvAuthValidator(tokenStore: ActorTokenStore): ValidationHook {
   return createTokenAuthValidator(tokenStore);
+}
+
+export async function resolveActorIdFromToken(tokenStore: ActorTokenStore, authToken?: string): Promise<string> {
+  if (!authToken) {
+    throw new AuthError("AUTH_MISSING", "authorization required");
+  }
+
+  const record = await tokenStore.resolveToken(authToken);
+  if (!record) {
+    throw new AuthError("AUTH_TOKEN_NOT_FOUND", "token not recognized");
+  }
+  if (record.revokedAt) {
+    throw new AuthError("AUTH_TOKEN_REVOKED", "token revoked");
+  }
+  await tokenStore.touchToken(record.tokenHash);
+  return record.actorId;
 }

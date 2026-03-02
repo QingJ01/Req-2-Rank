@@ -17,8 +17,6 @@ export interface HubClient {
 export interface HubClientOptions {
   serverUrl?: string;
   token?: string;
-  actorId?: string;
-  userId?: string;
 }
 
 class UnconfiguredHubClient implements HubClient {
@@ -46,21 +44,16 @@ class UnconfiguredHubClient implements HubClient {
 class HttpHubClient implements HubClient {
   private readonly baseUrl: string;
   private readonly token: string;
-  private readonly actorId: string;
-  private readonly userId: string;
 
-  constructor(serverUrl: string, token: string, actorId: string, userId: string) {
+  constructor(serverUrl: string, token: string) {
     this.baseUrl = serverUrl.replace(/\/+$/, "");
     this.token = token;
-    this.actorId = actorId;
-    this.userId = userId;
   }
 
   private headers(): Record<string, string> {
     return {
       "content-type": "application/json",
-      Authorization: `Bearer ${this.token}`,
-      "x-actor-id": this.actorId
+      Authorization: `Bearer ${this.token}`
     };
   }
 
@@ -83,7 +76,7 @@ class HttpHubClient implements HubClient {
   async requestNonce(): Promise<NonceResponse> {
     return this.requestJson<NonceResponse>("/api/nonces", {
       method: "POST",
-      body: JSON.stringify({ userId: this.userId })
+      body: JSON.stringify({})
     });
   }
 
@@ -126,11 +119,9 @@ class HttpHubClient implements HubClient {
 export function createHubClient(options: HubClientOptions = {}): HubClient {
   const serverUrl = options.serverUrl ?? process.env.R2R_HUB_SERVER_URL;
   const token = options.token ?? process.env.R2R_HUB_TOKEN;
-  const actorId = options.actorId ?? process.env.R2R_HUB_ACTOR_ID ?? "anonymous";
-  const userId = options.userId ?? process.env.R2R_HUB_USER_ID ?? actorId;
 
   if (serverUrl && token) {
-    return new HttpHubClient(serverUrl, token, actorId, userId);
+    return new HttpHubClient(serverUrl, token);
   }
 
   return new UnconfiguredHubClient();

@@ -10,7 +10,7 @@ import { LeaderboardAggregationStrategy, resolveLeaderboardStrategy } from "./li
 import { randomBytes } from "node:crypto";
 
 export interface NonceRequest {
-  userId: string;
+  userId?: string;
 }
 
 export interface ExtendedLeaderboardQuery extends LeaderboardQuery {
@@ -579,8 +579,11 @@ export function createAuthValidator(expectedToken: string): ValidationHook {
 }
 
 export async function postNonceRoute(request: NonceRequest): Promise<NonceResponse> {
-  requireNonEmpty(request.userId, "userId");
-  return defaultStore.issueNonce(request.userId);
+  const actorId = request.userId?.trim();
+  if (actorId) {
+    return defaultStore.issueNonce(actorId);
+  }
+  return defaultStore.issueNonce("anonymous");
 }
 
 export async function postSubmitRoute(payload: SubmissionRequest): Promise<SubmissionResponse> {
@@ -664,7 +667,6 @@ export function createNonceHandler(validate: ValidationHook, store: SubmissionSt
   return async (context: RouteContext<NonceRequest>): Promise<RouteEnvelope<NonceResponse>> => {
     try {
       await validate(context.actorId, context.authToken);
-      requireNonEmpty(context.body.userId, "userId");
       const data = await store.issueNonce(context.actorId);
       return {
         ok: true,

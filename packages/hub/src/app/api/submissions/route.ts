@@ -1,6 +1,6 @@
 import { RouteEnvelope, createSubmitHandler } from "../../../routes";
 import { SubmissionRequest, SubmissionResponse } from "@req2rank/core";
-import { resolveAuthTokenFromRequest } from "../route-helpers";
+import { resolveAuthActorFromRequest } from "../route-helpers";
 import { appStore, appValidate } from "../../state";
 
 export interface SubmitRouteInput {
@@ -20,14 +20,13 @@ export async function handleSubmitRequest(input: SubmitRouteInput): Promise<Rout
 }
 
 export async function POST(request: Request): Promise<Response> {
-  const actorId = request.headers.get("x-actor-id") ?? "anonymous";
   const body = (await request.json()) as SubmissionRequest;
-  const auth = resolveAuthTokenFromRequest(request);
-  if (auth.error) {
-    return Response.json(auth.error, { status: auth.error.status });
+  const auth = await resolveAuthActorFromRequest(request);
+  if (auth.error || !auth.actorId) {
+    return Response.json(auth.error, { status: auth.error?.status ?? 401 });
   }
   const result = await handleSubmitRequest({
-    actorId,
+    actorId: auth.actorId,
     authToken: auth.token,
     body
   });

@@ -106,7 +106,7 @@ describe("hub auth helpers", () => {
     const validate = createTokenAuthValidator(store);
 
     await expect(validate("user-1", issued.token)).resolves.toBeUndefined();
-    await expect(validate("user-2", issued.token)).rejects.toMatchObject({ code: "AUTH_ACTOR_MISMATCH" });
+    await expect(validate("user-2", issued.token)).resolves.toBeUndefined();
     await expect(validate("user-1", "unknown-token")).rejects.toMatchObject({ code: "AUTH_TOKEN_NOT_FOUND" });
     await expect(validate("user-1", undefined)).rejects.toMatchObject({ code: "AUTH_MISSING" });
   });
