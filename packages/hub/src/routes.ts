@@ -534,7 +534,7 @@ export function createSubmissionStore(): SubmissionStore {
     async listModelSubmissions(model: string): Promise<SubmissionDetail[]> {
       const normalized = normalizeModelName(model);
       return submissions
-        .filter((entry) => entry.model === normalized)
+        .filter((entry) => normalizeModelName(entry.model) === normalized)
         .sort((left, right) => right.submittedAt.localeCompare(left.submittedAt))
         .map((entry) => toDetail(entry));
     },

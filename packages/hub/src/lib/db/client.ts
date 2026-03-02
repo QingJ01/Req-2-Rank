@@ -260,6 +260,7 @@ export function createDrizzleSubmissionStore(databaseUrl: string): SubmissionSto
         ? sql<number>`coalesce((dimension_scores ->> ${dimension})::double precision, 0)`
         : sql<number>`score`;
       const baseWhere = complexity ? sql`where complexity = ${complexity}` : sql``;
+      const modelExpr = sql<string>`regexp_replace(model, '^.*/', '')`;
 
       let rows: AggregatedLeaderboardRow[];
 
@@ -267,7 +268,7 @@ export function createDrizzleSubmissionStore(databaseUrl: string): SubmissionSto
         rows = await db.execute<AggregatedLeaderboardRow>(sql`
           with aggregated as (
             select
-              model,
+              ${modelExpr} as model,
               avg(score)::double precision as score,
               avg(ci_low)::double precision as ci_low,
               avg(ci_high)::double precision as ci_high,
@@ -289,8 +290,8 @@ export function createDrizzleSubmissionStore(databaseUrl: string): SubmissionSto
       } else if (strategy === "latest") {
         rows = await db.execute<AggregatedLeaderboardRow>(sql`
           with picked as (
-            select distinct on (model)
-              model,
+            select distinct on (${modelExpr})
+              ${modelExpr} as model,
               score,
               ci_low,
               ci_high,
@@ -299,7 +300,7 @@ export function createDrizzleSubmissionStore(databaseUrl: string): SubmissionSto
               submitted_at
             from hub_submissions
             ${baseWhere}
-            order by model, submitted_at desc
+            order by ${modelExpr}, submitted_at desc
           )
           select model, score, ci_low, ci_high, verification_status
           from picked
@@ -310,8 +311,8 @@ export function createDrizzleSubmissionStore(databaseUrl: string): SubmissionSto
         const bestMetricDirection = sort === "asc" ? sql`asc` : sql`desc`;
         rows = await db.execute<AggregatedLeaderboardRow>(sql`
           with picked as (
-            select distinct on (model)
-              model,
+            select distinct on (${modelExpr})
+              ${modelExpr} as model,
               score,
               ci_low,
               ci_high,
@@ -319,7 +320,7 @@ export function createDrizzleSubmissionStore(databaseUrl: string): SubmissionSto
               ${metricExpr} as metric
             from hub_submissions
             ${baseWhere}
-            order by model, ${metricExpr} ${bestMetricDirection}, submitted_at desc
+            order by ${modelExpr}, ${metricExpr} ${bestMetricDirection}, submitted_at desc
           )
           select model, score, ci_low, ci_high, verification_status
           from picked
@@ -388,12 +389,27 @@ export function createDrizzleSubmissionStore(databaseUrl: string): SubmissionSto
     async listModelSubmissions(model: string): Promise<SubmissionDetail[]> {
       await ensureSchema();
       const normalized = normalizeModelName(model);
-      const rows = await db
-        .select()
-        .from(submissionsTable)
-        .where(eq(submissionsTable.model, normalized))
-        .orderBy(desc(submissionsTable.submittedAt));
-      return rows.map((row) => toDetail(row));
+      const rows = await db.execute(sql`
+        select *
+        from hub_submissions
+        where regexp_replace(model, '^.*/', '') = ${normalized}
+        order by submitted_at desc
+      `);
+      return rows.map((row) =>
+        toDetail({
+          runId: row.run_id,
+          model: row.model,
+          complexity: row.complexity,
+          score: row.score,
+          ciLow: row.ci_low,
+          ciHigh: row.ci_high,
+          agreementLevel: row.agreement_level,
+          dimensionScores: row.dimension_scores,
+          evidenceChain: row.evidence_chain,
+          submittedAt: row.submitted_at,
+          verificationStatus: row.verification_status
+        })
+      );
     },
 
     async listQueuedReverificationJobs(limit = 20): Promise<ReverificationJobDetail[]> {
