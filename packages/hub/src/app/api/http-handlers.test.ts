@@ -3,6 +3,7 @@ import { GET as getLeaderboard } from "./leaderboard/[complexity]/route.js";
 import { GET as getModel } from "./model/[id]/route.js";
 import { POST as postNonce } from "./nonces/route.js";
 import { POST as postSubmit } from "./submissions/route.js";
+import { appTokenStore } from "../state.js";
 
 async function readJson<T>(response: Response): Promise<T> {
   return (await response.json()) as T;
@@ -10,7 +11,8 @@ async function readJson<T>(response: Response): Promise<T> {
 
 describe("http-style app route handlers", () => {
   it("supports nonce -> submit -> leaderboard -> model via HTTP handlers", async () => {
-    const token = "dev-token";
+    const issued = await appTokenStore.issueToken("user-1");
+    const token = issued.token;
 
     const nonceRes = await postNonce(
       new Request("http://localhost/api/nonces", {

@@ -410,10 +410,13 @@ describe("github auth callback route", () => {
     expect(response.headers.get("content-disposition")).toContain("req2rank.config.json");
 
     const body = JSON.parse(await response.text()) as {
-      hub?: { enabled?: boolean; serverUrl?: string; token?: string };
+      hub?: { enabled?: boolean; serverUrl?: string; token?: string; actorId?: string; userId?: string };
     };
     expect(body.hub?.enabled).toBe(true);
     expect(body.hub?.serverUrl).toBe("http://localhost");
-    expect(body.hub?.token).toBe(sessionToken);
+    expect(body.hub?.token).not.toBe(sessionToken);
+    expect(body.hub?.token?.startsWith("r2r_session_")).toBe(true);
+    expect(body.hub?.actorId).toBe("user-download");
+    expect(body.hub?.userId).toBe("user-download");
   });
 });

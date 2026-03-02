@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { GET, POST } from "./route.js";
+import { appTokenStore } from "../../state.js";
 
 describe("calibration route", () => {
   it("rejects unauthorized requests", async () => {
@@ -18,19 +19,21 @@ describe("calibration route", () => {
       })
     );
 
-    expect(response.status).toBe(400);
-    const payload = (await response.json()) as { ok: boolean; error?: { message?: string } };
+    expect(response.status).toBe(401);
+    const payload = (await response.json()) as { ok: boolean; error?: { code?: string } };
     expect(payload.ok).toBe(false);
-    expect(payload.error?.message).toContain("not authorized");
+    expect(payload.error?.code).toBe("AUTH_MISSING");
   });
 
   it("stores and lists calibration snapshots", async () => {
+    const issued = await appTokenStore.issueToken("user-1");
+    const token = issued.token;
     const postResponse = await POST(
       new Request("http://localhost/api/calibration", {
         method: "POST",
         headers: {
           "content-type": "application/json",
-          authorization: "Bearer dev-token",
+          authorization: `Bearer ${token}`,
           "x-actor-id": "user-1"
         },
         body: JSON.stringify({
@@ -50,7 +53,7 @@ describe("calibration route", () => {
     const listResponse = await GET(
       new Request("http://localhost/api/calibration?limit=5", {
         headers: {
-          authorization: "Bearer dev-token",
+          authorization: `Bearer ${token}`,
           "x-actor-id": "user-1"
         }
       })
