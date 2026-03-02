@@ -47,6 +47,15 @@ class FakeEvaluationPanel extends EvaluationPanel {
       }
     ];
   }
+
+  override async evaluateWithIja(requirement: ProjectRequirement, execution: ExecutionResult): Promise<{ results: EvaluationResult[]; ija: number; droppedJudges: string[] }> {
+    const results = await this.evaluate(requirement, execution);
+    return {
+      results,
+      ija: 0.9,
+      droppedJudges: []
+    };
+  }
 }
 
 class FakeScoringEngine extends ScoringEngine {
