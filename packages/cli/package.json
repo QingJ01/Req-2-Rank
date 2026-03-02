@@ -20,7 +20,7 @@
     "pretypecheck": "pnpm --filter @req2rank/core build",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "pretest": "pnpm --filter @req2rank/core build",
-    "test": "vitest run",
+    "test": "vitest run --maxWorkers=1 --minWorkers=1",
     "smoke": "vitest run src/smoke.test.ts"
   },
   "dependencies": {

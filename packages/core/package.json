@@ -22,7 +22,7 @@
     "build": "tsc -p tsconfig.json",
     "prepublishOnly": "pnpm build",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run"
+    "test": "vitest run --maxWorkers=1 --minWorkers=1"
   },
   "dependencies": {
     "better-sqlite3": "^11.8.1",
