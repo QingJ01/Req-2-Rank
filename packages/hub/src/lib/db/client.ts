@@ -26,9 +26,17 @@ type SubmissionRow = {
   agreement_level: string;
   dimension_scores: unknown;
   evidence_chain: unknown;
-  submitted_at: Date;
+  submitted_at: Date | string | number;
   verification_status: string;
 };
+
+function coerceDate(value: Date | string | number): Date {
+  if (value instanceof Date) {
+    return value;
+  }
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? new Date(0) : date;
+}
 
 function toDetail(row: {
   runId: string;
@@ -40,7 +48,7 @@ function toDetail(row: {
   agreementLevel: string;
   dimensionScores: unknown;
   evidenceChain: unknown;
-  submittedAt: Date;
+  submittedAt: Date | string | number;
   verificationStatus: string;
 }): SubmissionDetail {
   return {
@@ -52,7 +60,7 @@ function toDetail(row: {
     agreementLevel: row.agreementLevel as SubmissionDetail["agreementLevel"],
     dimensionScores: (row.dimensionScores as Record<string, number>) ?? {},
     evidenceChain: (row.evidenceChain as SubmissionDetail["evidenceChain"]) ?? undefined,
-    submittedAt: row.submittedAt.toISOString(),
+    submittedAt: coerceDate(row.submittedAt).toISOString(),
     verificationStatus: row.verificationStatus as SubmissionDetail["verificationStatus"]
   };
 }
