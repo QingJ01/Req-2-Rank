@@ -211,6 +211,15 @@ export class EvaluationPanel {
     judges: JudgeConfig[],
     providerForJudge: (judge: JudgeConfig) => LLMProvider
   ): Promise<EvaluationPanelOutput> {
+    if (this.evaluate !== EvaluationPanel.prototype.evaluate) {
+      const results = await this.evaluate(requirement, execution, judges, providerForJudge);
+      return {
+        results,
+        ija: calculateIja(results),
+        droppedJudges: []
+      };
+    }
+
     const { results, droppedJudges } = await this.collectEvaluations(requirement, execution, judges, providerForJudge);
     if (results.length === 0) {
       throw new Error(`all judges failed (${droppedJudges.join(", ")})`);
