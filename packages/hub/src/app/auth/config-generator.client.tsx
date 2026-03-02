@@ -1,12 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Lang } from "../i18n";
 import { t } from "../locales";
 
 type ConfigGeneratorProps = {
   lang: Lang;
-  sessionToken?: string;
+  initialHubToken?: string;
+  actorId?: string;
 };
 
 type JudgeConfig = {
@@ -17,7 +18,7 @@ type JudgeConfig = {
   weight: string;
 };
 
-export function ConfigGenerator({ lang, sessionToken }: ConfigGeneratorProps) {
+export function ConfigGenerator({ lang, initialHubToken, actorId }: ConfigGeneratorProps) {
   const [targetProvider, setTargetProvider] = useState("openai");
   const [targetModel, setTargetModel] = useState("gpt-4o-mini");
   const [targetApiKey, setTargetApiKey] = useState("");
@@ -45,9 +46,16 @@ export function ConfigGenerator({ lang, sessionToken }: ConfigGeneratorProps) {
 
   const [hubEnabled, setHubEnabled] = useState(true);
   const [hubServerUrl, setHubServerUrl] = useState("https://req2rank.top");
-  const [hubToken, setHubToken] = useState(sessionToken ?? "");
-  const [includeToken, setIncludeToken] = useState(Boolean(sessionToken));
+  const [hubToken, setHubToken] = useState(initialHubToken ?? "");
+  const [includeToken, setIncludeToken] = useState(Boolean(initialHubToken));
   const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (initialHubToken) {
+      setHubToken(initialHubToken);
+      setIncludeToken(true);
+    }
+  }, [initialHubToken]);
 
   const configJson = useMemo(() => {
     const target = {
@@ -73,7 +81,8 @@ export function ConfigGenerator({ lang, sessionToken }: ConfigGeneratorProps) {
       ? {
           enabled: true,
           serverUrl: hubServerUrl.trim(),
-          ...(includeToken && hubToken ? { token: hubToken } : {})
+          ...(includeToken && hubToken ? { token: hubToken } : {}),
+          ...(actorId ? { actorId, userId: actorId } : {})
         }
       : { enabled: false };
 
@@ -106,7 +115,8 @@ export function ConfigGenerator({ lang, sessionToken }: ConfigGeneratorProps) {
     hubEnabled,
     hubServerUrl,
     hubToken,
-    includeToken
+    includeToken,
+    actorId
   ]);
 
   async function handleCopy(): Promise<void> {
