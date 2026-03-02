@@ -37,6 +37,7 @@ export function ConfigGenerator({ lang, sessionToken }: ConfigGeneratorProps) {
       weight: "1"
     }
   ]);
+  const [activeJudgeIndex, setActiveJudgeIndex] = useState(0);
 
   const [complexity, setComplexity] = useState("mixed");
   const [rounds, setRounds] = useState("1");
@@ -179,102 +180,121 @@ export function ConfigGenerator({ lang, sessionToken }: ConfigGeneratorProps) {
               type="button"
               className="hub-viz-button"
               onClick={() =>
-                setJudges((current) => [
-                  ...current,
-                  { provider: "openai", model: "gpt-4o", apiKey: "", baseUrl: "", weight: "1" }
-                ])
+                setJudges((current) => {
+                  const next = [
+                    ...current,
+                    { provider: "openai", model: "gpt-4o", apiKey: "", baseUrl: "", weight: "1" }
+                  ];
+                  setActiveJudgeIndex(next.length - 1);
+                  return next;
+                })
               }
             >
               {t(lang, "configAddJudge")}
             </button>
           </div>
-          <div className="hub-judge-list">
-            {judges.map((judge, index) => (
-              <div key={`judge-${index}`} className="hub-judge-card">
-                <div className="hub-flex-between">
-                  <strong>
-                    {t(lang, "configJudgeLabel")} {index + 1}
-                  </strong>
-                  {judges.length > 1 ? (
-                    <button
-                      type="button"
-                      className="hub-link-button"
-                      onClick={() =>
-                        setJudges((current) => current.filter((_, currentIndex) => currentIndex !== index))
-                      }
-                    >
-                      {t(lang, "configRemoveJudge")}
-                    </button>
-                  ) : null}
-                </div>
-                <label className="hub-field">
-                  <span>{t(lang, "configProvider")}</span>
-                  <input
-                    value={judge.provider}
-                    onChange={(event) =>
-                      setJudges((current) =>
-                        current.map((item, currentIndex) =>
-                          currentIndex === index ? { ...item, provider: event.target.value } : item
-                        )
-                      )
-                    }
-                  />
-                </label>
-                <label className="hub-field">
-                  <span>{t(lang, "configModel")}</span>
-                  <input
-                    value={judge.model}
-                    onChange={(event) =>
-                      setJudges((current) =>
-                        current.map((item, currentIndex) =>
-                          currentIndex === index ? { ...item, model: event.target.value } : item
-                        )
-                      )
-                    }
-                  />
-                </label>
-                <label className="hub-field">
-                  <span>{t(lang, "configApiKey")}</span>
-                  <input
-                    value={judge.apiKey}
-                    onChange={(event) =>
-                      setJudges((current) =>
-                        current.map((item, currentIndex) =>
-                          currentIndex === index ? { ...item, apiKey: event.target.value } : item
-                        )
-                      )
-                    }
-                  />
-                </label>
-                <label className="hub-field">
-                  <span>{t(lang, "configBaseUrl")}</span>
-                  <input
-                    value={judge.baseUrl}
-                    onChange={(event) =>
-                      setJudges((current) =>
-                        current.map((item, currentIndex) =>
-                          currentIndex === index ? { ...item, baseUrl: event.target.value } : item
-                        )
-                      )
-                    }
-                  />
-                </label>
-                <label className="hub-field">
-                  <span>{t(lang, "configWeight")}</span>
-                  <input
-                    value={judge.weight}
-                    onChange={(event) =>
-                      setJudges((current) =>
-                        current.map((item, currentIndex) =>
-                          currentIndex === index ? { ...item, weight: event.target.value } : item
-                        )
-                      )
-                    }
-                  />
-                </label>
-              </div>
+          <div className="hub-judge-tabs">
+            {judges.map((_, index) => (
+              <button
+                key={`judge-tab-${index}`}
+                type="button"
+                className={`hub-judge-tab ${index === activeJudgeIndex ? "is-active" : ""}`}
+                onClick={() => setActiveJudgeIndex(index)}
+              >
+                {index + 1}
+              </button>
             ))}
           </div>
+          {judges[activeJudgeIndex] ? (
+            <div className="hub-judge-card">
+              <div className="hub-flex-between">
+                <strong>
+                  {t(lang, "configJudgeLabel")} {activeJudgeIndex + 1}
+                </strong>
+                {judges.length > 1 ? (
+                  <button
+                    type="button"
+                    className="hub-link-button"
+                    onClick={() =>
+                      setJudges((current) => {
+                        const next = current.filter((_, currentIndex) => currentIndex !== activeJudgeIndex);
+                        const nextIndex = Math.max(0, Math.min(activeJudgeIndex, next.length - 1));
+                        setActiveJudgeIndex(nextIndex);
+                        return next;
+                      })
+                    }
+                  >
+                    {t(lang, "configRemoveJudge")}
+                  </button>
+                ) : null}
+              </div>
+              <label className="hub-field">
+                <span>{t(lang, "configProvider")}</span>
+                <input
+                  value={judges[activeJudgeIndex].provider}
+                  onChange={(event) =>
+                    setJudges((current) =>
+                      current.map((item, currentIndex) =>
+                        currentIndex === activeJudgeIndex ? { ...item, provider: event.target.value } : item
+                      )
+                    )
+                  }
+                />
+              </label>
+              <label className="hub-field">
+                <span>{t(lang, "configModel")}</span>
+                <input
+                  value={judges[activeJudgeIndex].model}
+                  onChange={(event) =>
+                    setJudges((current) =>
+                      current.map((item, currentIndex) =>
+                        currentIndex === activeJudgeIndex ? { ...item, model: event.target.value } : item
+                      )
+                    )
+                  }
+                />
+              </label>
+              <label className="hub-field">
+                <span>{t(lang, "configApiKey")}</span>
+                <input
+                  value={judges[activeJudgeIndex].apiKey}
+                  onChange={(event) =>
+                    setJudges((current) =>
+                      current.map((item, currentIndex) =>
+                        currentIndex === activeJudgeIndex ? { ...item, apiKey: event.target.value } : item
+                      )
+                    )
+                  }
+                />
+              </label>
+              <label className="hub-field">
+                <span>{t(lang, "configBaseUrl")}</span>
+                <input
+                  value={judges[activeJudgeIndex].baseUrl}
+                  onChange={(event) =>
+                    setJudges((current) =>
+                      current.map((item, currentIndex) =>
+                        currentIndex === activeJudgeIndex ? { ...item, baseUrl: event.target.value } : item
+                      )
+                    )
+                  }
+                />
+              </label>
+              <label className="hub-field">
+                <span>{t(lang, "configWeight")}</span>
+                <input
+                  value={judges[activeJudgeIndex].weight}
+                  onChange={(event) =>
+                    setJudges((current) =>
+                      current.map((item, currentIndex) =>
+                        currentIndex === activeJudgeIndex ? { ...item, weight: event.target.value } : item
+                      )
+                    )
+                  }
+                />
+              </label>
+            </div>
+          ) : null}
         </div>
         <div className="hub-config-section">
           <h3>{t(lang, "configTestTitle")}</h3>

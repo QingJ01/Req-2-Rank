@@ -1112,18 +1112,34 @@ a:hover {
   min-height: 240px;
 }
 
-.hub-judge-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin-top: 12px;
-}
-
 .hub-judge-card {
   border: 1px solid var(--border-light);
   border-radius: var(--radius-md);
   padding: 12px;
   background: rgba(255, 255, 255, 0.85);
+}
+
+.hub-judge-tabs {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  margin-bottom: 12px;
+}
+
+.hub-judge-tab {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  border: 1px solid var(--border-light);
+  background: rgba(255, 255, 255, 0.8);
+  color: var(--text-main);
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.hub-judge-tab.is-active {
+  border-color: var(--text-main);
+  background: rgba(15, 23, 42, 0.08);
 }
 
 .hub-link-button {
