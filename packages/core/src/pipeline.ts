@@ -507,6 +507,7 @@ export class PipelineOrchestrator {
           }
 
           const timeoutAt = coerceIsoTime(new Date());
+          const failureMessage = error instanceof Error ? error.message : String(error);
           for (const phase of ["generate", "execute", "evaluate", "score"] as const) {
             if (!phaseTimes[phase].startedAt) {
               phaseTimes[phase].startedAt = timeoutAt;
@@ -521,8 +522,8 @@ export class PipelineOrchestrator {
             dimensionScores: zeroDimensionScores(),
             ija: 0,
             requirementTitle: `${requirementTitle} (failed)`,
-            requirementText: requirementText || "Round failed due to timeout or sandbox validation.",
-            codeSubmission: codeSubmission || "failed",
+            requirementText: requirementText || `Round failed: ${failureMessage}`,
+            codeSubmission: codeSubmission || `failed: ${failureMessage}`,
             phaseTimes
           };
         }
