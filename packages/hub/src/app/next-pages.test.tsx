@@ -67,7 +67,7 @@ describe("next-style pages", () => {
     expect(submissionHtml).toContain("提交详情");
     expect(submissionHtml).toContain("维度得分");
     expect(submissionHtml).toContain("证据链");
-    expect(submissionHtml).toContain("样本 0");
+    expect(submissionHtml).toContain("样本 1");
     expect(submissionHtml).toContain("需求");
     expect(submissionHtml).toContain("提交代码");
     expect(submissionHtml).toContain("复制代码");
