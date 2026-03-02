@@ -37,12 +37,9 @@ export default async function AuthPage({ searchParams }: AuthPageProps) {
             {t(lang, "loginWithGithub")}
           </a>
         ) : null}
-        <a className="hub-viz-button" href="/api/auth/github?action=logout&redirect=/auth">
-          {t(lang, "logoutAction")}
-        </a>
         {session ? (
-          <a className="hub-viz-button" href="/api/auth/github?action=cli-config">
-            {t(lang, "downloadCliConfig")}
+          <a className="hub-viz-button" href="/api/auth/github?action=logout&redirect=/auth">
+            {t(lang, "logoutAction")}
           </a>
         ) : null}
       </div>

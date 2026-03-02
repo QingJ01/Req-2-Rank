@@ -1112,6 +1112,32 @@ a:hover {
   min-height: 240px;
 }
 
+.hub-judge-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.hub-judge-card {
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.85);
+}
+
+.hub-link-button {
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.hub-link-button:hover {
+  color: var(--text-main);
+}
+
 .hub-action-grid {
   display: grid;
   gap: 8px;
