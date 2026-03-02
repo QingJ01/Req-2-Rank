@@ -16,6 +16,20 @@ type AggregatedLeaderboardRow = {
   verification_status: "pending" | "verified" | "disputed";
 };
 
+type SubmissionRow = {
+  run_id: string;
+  model: string;
+  complexity: string;
+  score: number;
+  ci_low: number;
+  ci_high: number;
+  agreement_level: string;
+  dimension_scores: unknown;
+  evidence_chain: unknown;
+  submitted_at: Date;
+  verification_status: string;
+};
+
 function toDetail(row: {
   runId: string;
   model: string;
@@ -389,7 +403,7 @@ export function createDrizzleSubmissionStore(databaseUrl: string): SubmissionSto
     async listModelSubmissions(model: string): Promise<SubmissionDetail[]> {
       await ensureSchema();
       const normalized = normalizeModelName(model);
-      const rows = await db.execute(sql`
+      const rows = await db.execute<SubmissionRow>(sql`
         select *
         from hub_submissions
         where regexp_replace(model, '^.*/', '') = ${normalized}
